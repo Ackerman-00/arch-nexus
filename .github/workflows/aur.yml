@@ -290,7 +290,8 @@ jobs:
           # Write updated packages list for AUR push step (includes AUR sync packages)
           os.makedirs('/tmp/aur-state', exist_ok=True)
           with open('/tmp/aur-state/updated.txt', 'w') as f:
-              f.write('\n'.join(needs_aur_push))
+              for pkg in needs_aur_push:
+                  f.write(pkg + '\n')
           found = 'true' if needs_aur_push else 'false'
           with open(os.environ.get('GITHUB_OUTPUT', '/dev/null'), 'a') as f:
               f.write(f"updates_found={found}\n")
