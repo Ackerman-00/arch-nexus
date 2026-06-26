@@ -186,10 +186,10 @@ jobs:
                   # Still check if AUR push needed
                   aur_ver = get_aur_version(pkgname)
                   if aur_ver and aur_ver != curr_ver:
-                      needs_aur_push.append(pkgname)
+                      needs_aur_push.append(entry)
                       print(f"  → AUR has {aur_ver}, local has {curr_ver} — needs push.")
                   elif not aur_ver:
-                      needs_aur_push.append(pkgname)
+                      needs_aur_push.append(entry)
                       print(f"  → Not on AUR — needs push.")
                   else:
                       print(f"  → AUR already at {curr_ver}.")
@@ -235,17 +235,17 @@ jobs:
                   with open(pkgbuild_path, 'w') as f:
                       f.write(new_content)
                   updated_packages.append(pkgname)
-                  needs_aur_push.append(pkgname)
+                  needs_aur_push.append(entry)
                   print(f"  ✅ Updated {pkgname}: {curr_ver} → {new_ver}")
               else:
                   print(f"  → Already latest.")
                   # Even if upstream is latest, check if AUR needs sync
                   aur_ver = get_aur_version(pkgname)
                   if aur_ver and aur_ver != curr_ver:
-                      needs_aur_push.append(pkgname)
+                      needs_aur_push.append(entry)
                       print(f"  → AUR has {aur_ver}, local has {curr_ver} — needs push.")
                   elif not aur_ver:
-                      needs_aur_push.append(pkgname)
+                      needs_aur_push.append(entry)
                       print(f"  → Not on AUR — needs push.")
                   else:
                       print(f"  → AUR already at {curr_ver}.")
