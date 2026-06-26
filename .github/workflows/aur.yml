@@ -126,16 +126,16 @@ jobs:
                   result.append(u)
               return result
 
-           def update_pkgbuild(content, new_ver, new_sha):
-               c = content
-               c = re.sub(r'^pkgver=.*', f'pkgver={new_ver}', c, flags=re.MULTILINE)
-               c = re.sub(r'^pkgrel=.*', 'pkgrel=1', c, flags=re.MULTILINE)
-               c = re.sub(
-                   r'^sha256sums(_[a-zA-Z0-9_]+)?=\([^)]*\)',
-                   lambda m: f"sha256sums{m.group(1) or ''}=('{new_sha}')",
-                   c, flags=re.MULTILINE
-               )
-               return c
+          def update_pkgbuild(content, new_ver, new_sha):
+              c = content
+              c = re.sub(r'^pkgver=.*', f'pkgver={new_ver}', c, flags=re.MULTILINE)
+              c = re.sub(r'^pkgrel=.*', 'pkgrel=1', c, flags=re.MULTILINE)
+              c = re.sub(
+                  r'^sha256sums(_[a-zA-Z0-9_]+)?=\([^)]*\)',
+                  lambda m: f"sha256sums{m.group(1) or ''}=('{new_sha}')",
+                  c, flags=re.MULTILINE
+              )
+              return c
 
           # ---------- Main ----------
           subprocess.run(['git', 'config', 'user.name', 'github-actions[bot]'], check=True)
