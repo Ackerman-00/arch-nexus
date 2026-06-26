@@ -209,12 +209,26 @@ jobs:
                   print(f"  → Already latest.")
 
           # Commit and push to GitHub
+          push_ok = True
           if updated_packages:
               subprocess.run(['git', 'add', '-A'], check=True)
               msg = "chore: auto-update " + ", ".join(updated_packages)
               subprocess.run(['git', 'commit', '-m', msg], check=True)
-              subprocess.run(['git', 'push', 'origin', 'HEAD'], check=True)
-              print(f"\nCommitted and pushed updates for: {', '.join(updated_packages)}")
+              # Use token for push auth
+              token = os.environ.get('GH_TOKEN', '')
+              repo = subprocess.run(['git', 'remote', 'get-url', 'origin'],
+                  capture_output=True, text=True).stdout.strip()
+              if token and 'github.com' in repo:
+                  authed = repo.replace('https://github.com/',
+                      f'https://x-access-token:{token}@github.com/')
+                  subprocess.run(['git', 'remote', 'set-url', 'origin', authed], check=True)
+              result = subprocess.run(['git', 'push', 'origin', 'HEAD'],
+                  capture_output=True, text=True)
+              if result.returncode == 0:
+                  print(f"\nCommitted and pushed updates for: {', '.join(updated_packages)}")
+              else:
+                  print(f"\n⚠ Git push failed (will retry AUR push separately): {result.stderr.strip()}")
+                  push_ok = False
           else:
               print("\nNo updates found.")
 
@@ -231,12 +245,26 @@ jobs:
         run: |
           while IFS= read -r PKG; do
             [ -z "$PKG" ] && continue
-            echo "→ Pushing ${PKG} to AUR..."
             PKGBUILD_DIR="$(pwd)/${PKG}"
             AUR_PKGNAME=$(grep '^pkgname=' "${PKGBUILD_DIR}/PKGBUILD" \
               | sed 's/^pkgname=//' | tr -d "'\"")
             AUR_VER=$(grep '^pkgver=' "${PKGBUILD_DIR}/PKGBUILD" \
               | sed 's/^pkgver=//' | tr -d "'\"")
+            
+            # Check current version on AUR
+            AUR_LATEST=$(curl -s "https://aur.archlinux.org/rpc/v5/info?arg%5B%5D=${AUR_PKGNAME}" \
+              | python3 -c "import sys,json; d=json.load(sys.stdin); r=d.get('results',[]); print(r[0]['Version'].rsplit('-',1)[0] if r else '')" 2>/dev/null || echo "")
+            
+            if [ "$AUR_LATEST" = "$AUR_VER" ]; then
+              echo "→ ${AUR_PKGNAME}: version ${AUR_VER} already on AUR, skipping."
+              continue
+            fi
+            
+            if [ -n "$AUR_LATEST" ]; then
+              echo "→ ${AUR_PKGNAME}: AUR has ${AUR_LATEST}, pushing ${AUR_VER}..."
+            else
+              echo "→ ${AUR_PKGNAME}: not found on AUR, pushing ${AUR_VER}..."
+            fi
             
             # Clone AUR repo
             WORKDIR=$(mktemp -d)
