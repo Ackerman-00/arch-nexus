@@ -353,13 +353,18 @@ jobs:
             
             # Generate .SRCINFO — required for AUR package database metadata
             cd "$WORKDIR"
+            rm -f .SRCINFO
             docker run --rm -v "$WORKDIR:/work" archlinux:latest \
-              bash -c "cd /work && makepkg --printsrcinfo > .SRCINFO" 2>&1 || \
-              echo "⚠ Could not generate .SRCINFO — AUR pkg database won't refresh"
+              bash -c "cd /work && chown -R nobody: . && runuser -u nobody -- makepkg --printsrcinfo > /work/.SRCINFO" 2>&1 || true
             git config user.name "${{ secrets.AUR_USERNAME }}"
             git config user.email "${{ secrets.AUR_EMAIL }}"
             git add -A
-            [ -f .SRCINFO ] && git add -f .SRCINFO
+            if [ -s .SRCINFO ]; then
+              git add -f .SRCINFO
+              echo "✓ Generated .SRCINFO"
+            else
+              echo "⚠ .SRCINFO empty/missing — AUR pkg database won't refresh"
+            fi
             git commit -m "Update to ${AUR_VER}" 2>&1
             echo "Pushing to AUR..."
             git push origin HEAD 2>&1
