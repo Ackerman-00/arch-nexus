@@ -145,12 +145,26 @@ jobs:
               )
               return c
 
+          def get_aur_version(pkgname):
+              url = f"https://aur.archlinux.org/rpc/v5/info?arg[]={pkgname}"
+              try:
+                  with urllib.request.urlopen(url, timeout=15) as r:
+                      data = json.loads(r.read())
+                      results = data.get('results', [])
+                      if results:
+                          ver = results[0].get('Version', '')
+                          return ver.rsplit('-', 1)[0]
+                  return None
+              except Exception:
+                  return None
+
           # ---------- Main ----------
           subprocess.run(['git', 'config', 'user.name', 'github-actions[bot]'], check=True)
           subprocess.run(['git', 'config', 'user.email',
                           'github-actions[bot]@users.noreply.github.com'], check=True)
 
           updated_packages = []
+          needs_aur_push = []
 
           for entry in sorted(os.listdir('.')):
               pkgbuild_path = os.path.join(entry, 'PKGBUILD')
@@ -169,6 +183,16 @@ jobs:
               strategy = detect_strategy(raw, pkgname)
               if not strategy:
                   print(f"  ⤼ No update strategy for {pkgname}, skipping.")
+                  # Still check if AUR push needed
+                  aur_ver = get_aur_version(pkgname)
+                  if aur_ver and aur_ver != curr_ver:
+                      needs_aur_push.append(pkgname)
+                      print(f"  → AUR has {aur_ver}, local has {curr_ver} — needs push.")
+                  elif not aur_ver:
+                      needs_aur_push.append(pkgname)
+                      print(f"  → Not on AUR — needs push.")
+                  else:
+                      print(f"  → AUR already at {curr_ver}.")
                   continue
 
               new_ver = None
@@ -194,7 +218,6 @@ jobs:
                       print(f"  → Checking GitHub releases: {owner}/{repo}")
                       new_ver = check_github_release_version(owner, repo, raw)
                       if new_ver:
-                          # Download distfile with new version to get checksum
                           urls = get_distfile_urls(raw)
                           if urls:
                               resolved = urls[0].replace(curr_ver, new_ver)
@@ -212,11 +235,22 @@ jobs:
                   with open(pkgbuild_path, 'w') as f:
                       f.write(new_content)
                   updated_packages.append(pkgname)
+                  needs_aur_push.append(pkgname)
                   print(f"  ✅ Updated {pkgname}: {curr_ver} → {new_ver}")
               else:
                   print(f"  → Already latest.")
+                  # Even if upstream is latest, check if AUR needs sync
+                  aur_ver = get_aur_version(pkgname)
+                  if aur_ver and aur_ver != curr_ver:
+                      needs_aur_push.append(pkgname)
+                      print(f"  → AUR has {aur_ver}, local has {curr_ver} — needs push.")
+                  elif not aur_ver:
+                      needs_aur_push.append(pkgname)
+                      print(f"  → Not on AUR — needs push.")
+                  else:
+                      print(f"  → AUR already at {curr_ver}.")
 
-          # Commit and push to GitHub
+          # Commit and push to GitHub (only if PKGBUILDs changed)
           push_ok = True
           if updated_packages:
               subprocess.run(['git', 'add', '-A'], check=True)
@@ -237,7 +271,6 @@ jobs:
                       capture_output=True, text=True)
                   return r.returncode == 0
 
-              # Try GITHUB_TOKEN first, then GH_PAT as fallback
               if not git_push_with_token(os.environ.get('GH_TOKEN', '')):
                   pat = os.environ.get('GH_PAT', '')
                   if pat and pat != os.environ.get('GH_TOKEN', ''):
@@ -253,15 +286,18 @@ jobs:
                   print(f"\nCommitted and pushed updates for: {', '.join(updated_packages)}")
               else:
                   print(f"\n⚠ Git push failed — AUR push will still proceed")
-          else:
-              print("\nNo updates found.")
 
-          # Write updated packages list for AUR push step
+          # Write updated packages list for AUR push step (includes AUR sync packages)
           os.makedirs('/tmp/aur-state', exist_ok=True)
           with open('/tmp/aur-state/updated.txt', 'w') as f:
-              f.write('\n'.join(updated_packages))
+              f.write('\n'.join(needs_aur_push))
+          found = 'true' if needs_aur_push else 'false'
           with open(os.environ.get('GITHUB_OUTPUT', '/dev/null'), 'a') as f:
-              f.write(f"updates_found={'true' if updated_packages else 'false'}\n")
+              f.write(f"updates_found={found}\n")
+          if needs_aur_push:
+              print(f"\nPackages to push to AUR: {', '.join(needs_aur_push)}")
+          else:
+              print("\nNo packages need AUR push.")
           PYEOF
 
       - name: Push updates to AUR
