@@ -5,6 +5,9 @@ on:
     - cron: '0 6 * * *'
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   update:
     runs-on: ubuntu-latest
@@ -27,6 +30,7 @@ jobs:
         id: scan
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_PAT: ${{ secrets.GH_PAT }}
         run: |
           python3 << 'PYEOF'
           import os, re, subprocess, hashlib, tempfile, json, urllib.request
@@ -214,21 +218,37 @@ jobs:
               subprocess.run(['git', 'add', '-A'], check=True)
               msg = "chore: auto-update " + ", ".join(updated_packages)
               subprocess.run(['git', 'commit', '-m', msg], check=True)
-              # Use token for push auth
-              token = os.environ.get('GH_TOKEN', '')
-              repo = subprocess.run(['git', 'remote', 'get-url', 'origin'],
-                  capture_output=True, text=True).stdout.strip()
-              if token and 'github.com' in repo:
-                  authed = repo.replace('https://github.com/',
-                      f'https://x-access-token:{token}@github.com/')
+
+              def git_push_with_token(tok):
+                  if not tok:
+                      return False
+                  repo_url = subprocess.run(['git', 'remote', 'get-url', 'origin'],
+                      capture_output=True, text=True).stdout.strip()
+                  authed = repo_url.replace('https://github.com/',
+                      f'https://x-access-token:{tok}@github.com/')
                   subprocess.run(['git', 'remote', 'set-url', 'origin', authed], check=True)
-              result = subprocess.run(['git', 'push', 'origin', 'HEAD'],
-                  capture_output=True, text=True)
-              if result.returncode == 0:
+                  subprocess.run(['git', 'config', '--unset-all', 'http.https://github.com/.extraheader'],
+                      capture_output=True)
+                  r = subprocess.run(['git', 'push', 'origin', 'HEAD'],
+                      capture_output=True, text=True)
+                  return r.returncode == 0
+
+              # Try GITHUB_TOKEN first, then GH_PAT as fallback
+              if not git_push_with_token(os.environ.get('GH_TOKEN', '')):
+                  pat = os.environ.get('GH_PAT', '')
+                  if pat and pat != os.environ.get('GH_TOKEN', ''):
+                      print("  → GITHUB_TOKEN push failed, trying GH_PAT...")
+                      if git_push_with_token(pat):
+                          push_ok = True
+                      else:
+                          push_ok = False
+                  else:
+                      push_ok = False
+
+              if push_ok:
                   print(f"\nCommitted and pushed updates for: {', '.join(updated_packages)}")
               else:
-                  print(f"\n⚠ Git push failed (will retry AUR push separately): {result.stderr.strip()}")
-                  push_ok = False
+                  print(f"\n⚠ Git push failed — AUR push will still proceed")
           else:
               print("\nNo updates found.")
 
