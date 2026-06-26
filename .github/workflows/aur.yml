@@ -24,11 +24,11 @@ jobs:
           ssh-keyscan aur.archlinux.org >> ~/.ssh/known_hosts 2>/dev/null
           echo "${{ secrets.AUR_SSH_PRIVATE_KEY }}" > ~/.ssh/aur_key
           chmod 600 ~/.ssh/aur_key
-          cat >> ~/.ssh/config << 'EOF'
-Host aur.archlinux.org
-    IdentityFile ~/.ssh/aur_key
-    User aur
-EOF
+          {
+            echo 'Host aur.archlinux.org'
+            echo '    IdentityFile ~/.ssh/aur_key'
+            echo '    User aur'
+          } >> ~/.ssh/config
 
       - name: Scan and update packages
         id: scan
