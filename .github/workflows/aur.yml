@@ -307,9 +307,12 @@ jobs:
         run: |
           set -x
           echo "=== AUR push step started ==="
+          [ -s /tmp/aur-state/updated.txt ] || { echo "State file empty, nothing to push."; exit 0; }
           echo "Contents of state file:"
           cat /tmp/aur-state/updated.txt 2>&1 || echo "(file missing)"
           echo "=== End state file ==="
+          echo "Pulling Arch image for SRCINFO generation..."
+          docker pull archlinux:latest >/dev/null 2>&1 || true
           while IFS= read -r PKG; do
             [ -z "$PKG" ] && continue
             echo "Processing package: $PKG"
@@ -344,15 +347,19 @@ jobs:
             
             # Copy updated files
             cp "${PKGBUILD_DIR}/PKGBUILD" "$WORKDIR/"
-            for f in "${PKGBUILD_DIR}"/*; do
+            for f in "${PKGBUILD_DIR}"/*.install "${PKGBUILD_DIR}"/*.patch "${PKGBUILD_DIR}"/*.diff; do
               [ -f "$f" ] && cp "$f" "$WORKDIR/"
             done
             
-            # Commit and push to AUR
+            # Generate .SRCINFO — required for AUR package database metadata
             cd "$WORKDIR"
+            docker run --rm -v "$WORKDIR:/work" archlinux:latest \
+              bash -c "cd /work && makepkg --printsrcinfo > .SRCINFO" 2>&1 || \
+              echo "⚠ Could not generate .SRCINFO — AUR pkg database won't refresh"
             git config user.name "${{ secrets.AUR_USERNAME }}"
             git config user.email "${{ secrets.AUR_EMAIL }}"
             git add -A
+            [ -f .SRCINFO ] && git add -f .SRCINFO
             git commit -m "Update to ${AUR_VER}" 2>&1
             echo "Pushing to AUR..."
             git push origin HEAD 2>&1
