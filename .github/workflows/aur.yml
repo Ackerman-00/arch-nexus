@@ -24,7 +24,11 @@ jobs:
           ssh-keyscan aur.archlinux.org >> ~/.ssh/known_hosts 2>/dev/null
           echo "${{ secrets.AUR_SSH_PRIVATE_KEY }}" > ~/.ssh/aur_key
           chmod 600 ~/.ssh/aur_key
-          echo "IdentityFile ~/.ssh/aur_key" >> ~/.ssh/config
+          cat >> ~/.ssh/config << 'EOF'
+Host aur.archlinux.org
+    IdentityFile ~/.ssh/aur_key
+    User aur
+EOF
 
       - name: Scan and update packages
         id: scan
@@ -262,18 +266,27 @@ jobs:
 
       - name: Push updates to AUR
         if: steps.scan.outputs.updates_found == 'true'
+        shell: /usr/bin/bash -e {0}
         run: |
+          set -x
+          echo "=== AUR push step started ==="
+          echo "Contents of state file:"
+          cat /tmp/aur-state/updated.txt 2>&1 || echo "(file missing)"
+          echo "=== End state file ==="
           while IFS= read -r PKG; do
             [ -z "$PKG" ] && continue
+            echo "Processing package: $PKG"
             PKGBUILD_DIR="$(pwd)/${PKG}"
             AUR_PKGNAME=$(grep '^pkgname=' "${PKGBUILD_DIR}/PKGBUILD" \
               | sed 's/^pkgname=//' | tr -d "'\"")
             AUR_VER=$(grep '^pkgver=' "${PKGBUILD_DIR}/PKGBUILD" \
               | sed 's/^pkgver=//' | tr -d "'\"")
+            echo "Package name: $AUR_PKGNAME, version: $AUR_VER"
             
             # Check current version on AUR
             AUR_LATEST=$(curl -s "https://aur.archlinux.org/rpc/v5/info?arg%5B%5D=${AUR_PKGNAME}" \
               | python3 -c "import sys,json; d=json.load(sys.stdin); r=d.get('results',[]); print(r[0]['Version'].rsplit('-',1)[0] if r else '')" 2>/dev/null || echo "")
+            echo "AUR latest: '$AUR_LATEST'"
             
             if [ "$AUR_LATEST" = "$AUR_VER" ]; then
               echo "→ ${AUR_PKGNAME}: version ${AUR_VER} already on AUR, skipping."
@@ -288,7 +301,9 @@ jobs:
             
             # Clone AUR repo
             WORKDIR=$(mktemp -d)
-            git clone "ssh://aur@aur.archlinux.org/${AUR_PKGNAME}.git" "$WORKDIR"
+            echo "Cloning AUR repo into $WORKDIR..."
+            git clone "ssh://aur@aur.archlinux.org/${AUR_PKGNAME}.git" "$WORKDIR" 2>&1
+            echo "Clone done."
             
             # Copy updated files
             cp "${PKGBUILD_DIR}/PKGBUILD" "$WORKDIR/"
@@ -301,9 +316,12 @@ jobs:
             git config user.name "${{ secrets.AUR_USERNAME }}"
             git config user.email "${{ secrets.AUR_EMAIL }}"
             git add -A
-            git commit -m "Update to ${AUR_VER}"
-            git push origin HEAD
+            git commit -m "Update to ${AUR_VER}" 2>&1
+            echo "Pushing to AUR..."
+            git push origin HEAD 2>&1
+            echo "Push done."
             
             rm -rf "$WORKDIR"
             echo "  ✓ ${AUR_PKGNAME} pushed to AUR"
           done < /tmp/aur-state/updated.txt
+          echo "=== AUR push step finished ==="
