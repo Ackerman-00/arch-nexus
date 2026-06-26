@@ -355,7 +355,7 @@ jobs:
             cd "$WORKDIR"
             rm -f .SRCINFO
             docker run --rm -v "$WORKDIR:/work" archlinux:latest \
-              bash -c "cd /work && chown -R nobody: . && runuser -u nobody -- makepkg --printsrcinfo > /work/.SRCINFO" 2>&1 || true
+              bash -c "mkdir -p /tmp/build && cp /work/PKGBUILD /tmp/build/ && chown -R nobody: /tmp/build && cd /tmp/build && runuser -u nobody -- makepkg --printsrcinfo > /work/.SRCINFO" 2>&1 || true
             git config user.name "${{ secrets.AUR_USERNAME }}"
             git config user.email "${{ secrets.AUR_EMAIL }}"
             git add -A
