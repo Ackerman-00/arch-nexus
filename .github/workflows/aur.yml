@@ -1,4 +1,4 @@
-name: Check and Update AUR Package
+name: Check and Update AUR Packages
 
 on:
   schedule:
@@ -9,61 +9,253 @@ jobs:
   update:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-
-      - name: Download AppImage
-        run: |
-          curl -sL -o /tmp/Root.AppImage \
-            "https://installer.rootapp.com/installer/Linux/X64/Root.AppImage"
-          echo "SHA256=$(sha256sum /tmp/Root.AppImage | cut -d' ' -f1)" >> $GITHUB_ENV
-
-      - name: Extract version from AppImage
-        run: |
-          chmod +x /tmp/Root.AppImage
-          /tmp/Root.AppImage --appimage-extract > /dev/null 2>&1
-          VERSION=$(grep '^X-AppImage-Version' squashfs-root/*.desktop \
-            | head -1 | sed 's/^X-AppImage-Version=//' | tr -d '\r')
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-
-      - name: Check if update needed
-        id: check
-        run: |
-          CURRENT=$(grep '^pkgver=' rootapp/PKGBUILD \
-            | sed 's/^pkgver=//' | tr -d "'\"")
-          echo "Current: $CURRENT, Latest: $VERSION"
-          if [ -z "$VERSION" ]; then
-            echo "update_needed=false" >> $GITHUB_OUTPUT
-          elif [ "$VERSION" != "$CURRENT" ]; then
-            echo "update_needed=true" >> $GITHUB_OUTPUT
-          else
-            echo "update_needed=false" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Update PKGBUILD
-        if: steps.check.outputs.update_needed == 'true'
-        run: |
-          sed -i "s/^pkgver=.*/pkgver=$VERSION/" rootapp/PKGBUILD
-          sed -i "s/^pkgrel=.*/pkgrel=1/" rootapp/PKGBUILD
-          sed -i "s/^sha256sums=.*/sha256sums=('$SHA256')/" rootapp/PKGBUILD
-
-      - name: Commit to GitHub
-        if: steps.check.outputs.update_needed == 'true'
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add rootapp/PKGBUILD
-          git commit -m "rootapp-bin: update to $VERSION"
-          git push
-
-      - name: Push to AUR
-        if: steps.check.outputs.update_needed == 'true'
-        uses: KSXGitHub/github-actions-deploy-aur@v4.1.3
+      - name: Checkout repository
+        uses: actions/checkout@v5
         with:
-          pkgname: rootapp-bin
-          pkgbuild: ./rootapp/PKGBUILD
-          commit_username: ${{ secrets.AUR_USERNAME }}
-          commit_email: ${{ secrets.AUR_EMAIL }}
-          ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
-          commit_message: Update to ${{ env.VERSION }}
-          updpkgsums: false
-          test: false
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Setup SSH for AUR
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan aur.archlinux.org >> ~/.ssh/known_hosts 2>/dev/null
+          echo "${{ secrets.AUR_SSH_PRIVATE_KEY }}" > ~/.ssh/aur_key
+          chmod 600 ~/.ssh/aur_key
+          echo "IdentityFile ~/.ssh/aur_key" >> ~/.ssh/config
+
+      - name: Scan and update packages
+        id: scan
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 << 'PYEOF'
+          import os, re, subprocess, hashlib, tempfile, json, urllib.request
+
+          def sha256_file(path):
+              h = hashlib.sha256()
+              with open(path, 'rb') as f:
+                  for chunk in iter(lambda: f.read(65536), b''):
+                      h.update(chunk)
+              return h.hexdigest()
+
+          def fetch_file(url, dest_path):
+              for attempt in range(3):
+                  try:
+                      req = urllib.request.Request(url, headers={
+                          'User-Agent': 'ArchNexus-BuildBot/1.0'
+                      })
+                      with urllib.request.urlopen(req, timeout=150) as r:
+                          with open(dest_path, 'wb') as f:
+                              f.write(r.read())
+                          return True
+                  except Exception:
+                      pass
+              return False
+
+          def get_github_latest_release(owner, repo):
+              url = f"https://api.github.com/repos/{owner}/{repo}/releases/latest"
+              req = urllib.request.Request(url, headers={
+                  'Accept': 'application/vnd.github.v3+json',
+                  'User-Agent': 'ArchNexus-BuildBot/1.0'
+              })
+              token = os.environ.get('GH_TOKEN')
+              if token:
+                  req.add_header('Authorization', f'token {token}')
+              try:
+                  with urllib.request.urlopen(req, timeout=20) as r:
+                      data = json.loads(r.read())
+                      return data.get('tag_name', '').lstrip('v')
+              except Exception:
+                  return None
+
+          def detect_strategy(pkgbuild_text, pkgname):
+              if 'installer.rootapp.com' in pkgbuild_text:
+                  return 'appimage'
+              gh_m = re.search(r'github\.com/([^/]+)/([^/]+)', pkgbuild_text)
+              if gh_m:
+                  return 'github_release'
+              return None
+
+          def check_appimage_version(src_url):
+              with tempfile.TemporaryDirectory() as tmp:
+                  appimage = os.path.join(tmp, 'AppImage')
+                  if not fetch_file(src_url, appimage):
+                      return None, None
+                  sha = sha256_file(appimage)
+                  os.chmod(appimage, 0o755)
+                  subprocess.run([appimage, '--appimage-extract'],
+                      cwd=tmp, capture_output=True, timeout=300)
+                  for f in os.listdir(tmp):
+                      d = os.path.join(tmp, f)
+                      if os.path.isdir(d):
+                          for root, dirs, files in os.walk(d):
+                              for fn in files:
+                                  if fn.endswith('.desktop'):
+                                      fp = os.path.join(root, fn)
+                                      with open(fp) as fh:
+                                          for line in fh:
+                                              m = re.match(r'^X-AppImage-Version=(.+)', line)
+                                              if m:
+                                                  return m.group(1).strip(), sha
+              return None, sha
+
+          def check_github_release_version(owner, repo, pkgbuild_text):
+              latest = get_github_latest_release(owner, repo)
+              if not latest:
+                  return None
+              ver_m = re.search(r'^pkgver=["\']?([^"\'\n\s]+)', pkgbuild_text, re.MULTILINE)
+              curr_ver = ver_m.group(1) if ver_m else None
+              if latest == curr_ver:
+                  return None  # No update needed
+              return latest
+
+          def parse_shell_var(var_name, text):
+              m = re.search(rf'^{var_name}=["\']?([^"\'\n\s]+)', text, re.MULTILINE)
+              return m.group(1) if m else None
+
+          def get_distfile_urls(text):
+              m = re.search(r'^source(?:_x86_64|_aarch64)?=\((.+?)\)', text, re.MULTILINE | re.DOTALL)
+              if not m:
+                  return []
+              urls = re.findall(r'(https?://[^\s"\'()>]+)', m.group(1))
+              # Handle PKGBUILD source syntax: "name::url" or just "url"
+              result = []
+              for u in urls:
+                  if '::' in u:
+                      u = u.split('::', 1)[1]
+                  result.append(u)
+              return result
+
+           def update_pkgbuild(content, new_ver, new_sha):
+               c = content
+               c = re.sub(r'^pkgver=.*', f'pkgver={new_ver}', c, flags=re.MULTILINE)
+               c = re.sub(r'^pkgrel=.*', 'pkgrel=1', c, flags=re.MULTILINE)
+               c = re.sub(
+                   r'^sha256sums(_[a-zA-Z0-9_]+)?=\([^)]*\)',
+                   lambda m: f"sha256sums{m.group(1) or ''}=('{new_sha}')",
+                   c, flags=re.MULTILINE
+               )
+               return c
+
+          # ---------- Main ----------
+          subprocess.run(['git', 'config', 'user.name', 'github-actions[bot]'], check=True)
+          subprocess.run(['git', 'config', 'user.email',
+                          'github-actions[bot]@users.noreply.github.com'], check=True)
+
+          updated_packages = []
+
+          for entry in sorted(os.listdir('.')):
+              pkgbuild_path = os.path.join(entry, 'PKGBUILD')
+              if not os.path.isdir(entry) or not os.path.isfile(pkgbuild_path):
+                  continue
+
+              with open(pkgbuild_path) as f:
+                  raw = f.read()
+
+              pkgname = parse_shell_var('pkgname', raw)
+              curr_ver = parse_shell_var('pkgver', raw)
+              if not pkgname or not curr_ver:
+                  continue
+
+              print(f"Scanning {pkgname} (current: {curr_ver})...")
+              strategy = detect_strategy(raw, pkgname)
+              if not strategy:
+                  print(f"  ⤼ No update strategy for {pkgname}, skipping.")
+                  continue
+
+              new_ver = None
+              new_sha = None
+
+              if strategy == 'appimage':
+                  urls = get_distfile_urls(raw)
+                  if not urls:
+                      print(f"  ⚠ No distfiles found for {pkgname}")
+                      continue
+                  print(f"  → Checking AppImage: {urls[0]}")
+                  nv, ns = check_appimage_version(urls[0])
+                  if nv and nv != curr_ver:
+                      new_ver, new_sha = nv, ns
+                  else:
+                      print(f"  → No update (version: {nv})")
+
+              elif strategy == 'github_release':
+                  gh_m = re.search(r'github\.com/([^/]+)/([^/]+)', raw)
+                  if gh_m:
+                      owner, repo = gh_m.group(1), gh_m.group(2)
+                      repo = repo.rstrip('.git')
+                      print(f"  → Checking GitHub releases: {owner}/{repo}")
+                      new_ver = check_github_release_version(owner, repo, raw)
+                      if new_ver:
+                          # Download distfile with new version to get checksum
+                          urls = get_distfile_urls(raw)
+                          if urls:
+                              resolved = urls[0].replace(curr_ver, new_ver)
+                              with tempfile.NamedTemporaryFile(delete=False) as tmp:
+                                  dest = tmp.name
+                              if fetch_file(resolved, dest):
+                                  new_sha = sha256_file(dest)
+                                  os.unlink(dest)
+                          if not new_sha:
+                              print(f"  ⚠ Could not fetch distfile for {pkgname} @ {new_ver}")
+                              continue
+
+              if new_ver and new_sha:
+                  new_content = update_pkgbuild(raw, new_ver, new_sha)
+                  with open(pkgbuild_path, 'w') as f:
+                      f.write(new_content)
+                  updated_packages.append(pkgname)
+                  print(f"  ✅ Updated {pkgname}: {curr_ver} → {new_ver}")
+              else:
+                  print(f"  → Already latest.")
+
+          # Commit and push to GitHub
+          if updated_packages:
+              subprocess.run(['git', 'add', '-A'], check=True)
+              msg = "chore: auto-update " + ", ".join(updated_packages)
+              subprocess.run(['git', 'commit', '-m', msg], check=True)
+              subprocess.run(['git', 'push', 'origin', 'HEAD'], check=True)
+              print(f"\nCommitted and pushed updates for: {', '.join(updated_packages)}")
+          else:
+              print("\nNo updates found.")
+
+          # Write updated packages list for AUR push step
+          os.makedirs('/tmp/aur-state', exist_ok=True)
+          with open('/tmp/aur-state/updated.txt', 'w') as f:
+              f.write('\n'.join(updated_packages))
+          with open(os.environ.get('GITHUB_OUTPUT', '/dev/null'), 'a') as f:
+              f.write(f"updates_found={'true' if updated_packages else 'false'}\n")
+          PYEOF
+
+      - name: Push updates to AUR
+        if: steps.scan.outputs.updates_found == 'true'
+        run: |
+          while IFS= read -r PKG; do
+            [ -z "$PKG" ] && continue
+            echo "→ Pushing ${PKG} to AUR..."
+            PKGBUILD_DIR="$(pwd)/${PKG}"
+            AUR_PKGNAME=$(grep '^pkgname=' "${PKGBUILD_DIR}/PKGBUILD" \
+              | sed 's/^pkgname=//' | tr -d "'\"")
+            AUR_VER=$(grep '^pkgver=' "${PKGBUILD_DIR}/PKGBUILD" \
+              | sed 's/^pkgver=//' | tr -d "'\"")
+            
+            # Clone AUR repo
+            WORKDIR=$(mktemp -d)
+            git clone "ssh://aur@aur.archlinux.org/${AUR_PKGNAME}.git" "$WORKDIR"
+            
+            # Copy updated files
+            cp "${PKGBUILD_DIR}/PKGBUILD" "$WORKDIR/"
+            for f in "${PKGBUILD_DIR}"/*; do
+              [ -f "$f" ] && cp "$f" "$WORKDIR/"
+            done
+            
+            # Commit and push to AUR
+            cd "$WORKDIR"
+            git config user.name "${{ secrets.AUR_USERNAME }}"
+            git config user.email "${{ secrets.AUR_EMAIL }}"
+            git add -A
+            git commit -m "Update to ${AUR_VER}"
+            git push origin HEAD
+            
+            rm -rf "$WORKDIR"
+            echo "  ✓ ${AUR_PKGNAME} pushed to AUR"
+          done < /tmp/aur-state/updated.txt
