@@ -147,17 +147,17 @@ jobs:
               )
               return c
 
-            def get_aur_version(pkgname):
-                url = f"https://aur.archlinux.org/rpc/v5/info?arg[]={pkgname}"
-                try:
-                    with urllib.request.urlopen(url, timeout=15) as r:
-                        data = json.loads(r.read())
-                        results = data.get('results', [])
-                        if results:
-                            return results[0].get('Version', '')
-                    return None
-                except Exception:
-                    return None
+          def get_aur_version(pkgname):
+              url = f"https://aur.archlinux.org/rpc/v5/info?arg[]={pkgname}"
+              try:
+                  with urllib.request.urlopen(url, timeout=15) as r:
+                      data = json.loads(r.read())
+                      results = data.get('results', [])
+                      if results:
+                          return results[0].get('Version', '')
+                  return None
+              except Exception:
+                  return None
 
           # ---------- Main ----------
           subprocess.run(['git', 'config', 'user.name', 'github-actions[bot]'], check=True)
@@ -177,10 +177,10 @@ jobs:
 
               pkgname = parse_shell_var('pkgname', raw)
               curr_ver = parse_shell_var('pkgver', raw)
-              curr_rel = parse_shell_var('pkgrel', raw) or '1'
-              full_ver = f"{curr_ver}-{curr_rel}"
               if not pkgname or not curr_ver:
                   continue
+              curr_rel = parse_shell_var('pkgrel', raw) or '1'
+              full_ver = f"{curr_ver}-{curr_rel}"
 
               print(f"Scanning {pkgname} (current: {full_ver})...")
               strategy = detect_strategy(raw, pkgname)
