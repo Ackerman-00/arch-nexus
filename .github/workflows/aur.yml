@@ -1,6 +1,8 @@
 name: Check and Update AUR Packages
 
 on:
+  push:
+    branches: [main]
   schedule:
     - cron: '0 6 * * *'
   workflow_dispatch:
@@ -145,18 +147,17 @@ jobs:
               )
               return c
 
-          def get_aur_version(pkgname):
-              url = f"https://aur.archlinux.org/rpc/v5/info?arg[]={pkgname}"
-              try:
-                  with urllib.request.urlopen(url, timeout=15) as r:
-                      data = json.loads(r.read())
-                      results = data.get('results', [])
-                      if results:
-                          ver = results[0].get('Version', '')
-                          return ver.rsplit('-', 1)[0]
-                  return None
-              except Exception:
-                  return None
+            def get_aur_version(pkgname):
+                url = f"https://aur.archlinux.org/rpc/v5/info?arg[]={pkgname}"
+                try:
+                    with urllib.request.urlopen(url, timeout=15) as r:
+                        data = json.loads(r.read())
+                        results = data.get('results', [])
+                        if results:
+                            return results[0].get('Version', '')
+                    return None
+                except Exception:
+                    return None
 
           # ---------- Main ----------
           subprocess.run(['git', 'config', 'user.name', 'github-actions[bot]'], check=True)
@@ -176,23 +177,25 @@ jobs:
 
               pkgname = parse_shell_var('pkgname', raw)
               curr_ver = parse_shell_var('pkgver', raw)
+              curr_rel = parse_shell_var('pkgrel', raw) or '1'
+              full_ver = f"{curr_ver}-{curr_rel}"
               if not pkgname or not curr_ver:
                   continue
 
-              print(f"Scanning {pkgname} (current: {curr_ver})...")
+              print(f"Scanning {pkgname} (current: {full_ver})...")
               strategy = detect_strategy(raw, pkgname)
               if not strategy:
                   print(f"  ⤼ No update strategy for {pkgname}, skipping.")
                   # Still check if AUR push needed
                   aur_ver = get_aur_version(pkgname)
-                  if aur_ver and aur_ver != curr_ver:
+                  if aur_ver and aur_ver != full_ver:
                       needs_aur_push.append(entry)
-                      print(f"  → AUR has {aur_ver}, local has {curr_ver} — needs push.")
+                      print(f"  → AUR has {aur_ver}, local has {full_ver} — needs push.")
                   elif not aur_ver:
                       needs_aur_push.append(entry)
                       print(f"  → Not on AUR — needs push.")
                   else:
-                      print(f"  → AUR already at {curr_ver}.")
+                      print(f"  → AUR already at {full_ver}.")
                   continue
 
               new_ver = None
@@ -241,14 +244,14 @@ jobs:
                   print(f"  → Already latest.")
                   # Even if upstream is latest, check if AUR needs sync
                   aur_ver = get_aur_version(pkgname)
-                  if aur_ver and aur_ver != curr_ver:
+                  if aur_ver and aur_ver != full_ver:
                       needs_aur_push.append(entry)
-                      print(f"  → AUR has {aur_ver}, local has {curr_ver} — needs push.")
+                      print(f"  → AUR has {aur_ver}, local has {full_ver} — needs push.")
                   elif not aur_ver:
                       needs_aur_push.append(entry)
                       print(f"  → Not on AUR — needs push.")
                   else:
-                      print(f"  → AUR already at {curr_ver}.")
+                      print(f"  → AUR already at {full_ver}.")
 
           # Commit and push to GitHub (only if PKGBUILDs changed)
           push_ok = True
@@ -321,22 +324,25 @@ jobs:
               | sed 's/^pkgname=//' | tr -d "'\"")
             AUR_VER=$(grep '^pkgver=' "${PKGBUILD_DIR}/PKGBUILD" \
               | sed 's/^pkgver=//' | tr -d "'\"")
-            echo "Package name: $AUR_PKGNAME, version: $AUR_VER"
+            AUR_REL=$(grep '^pkgrel=' "${PKGBUILD_DIR}/PKGBUILD" \
+              | sed 's/^pkgrel=//' | tr -d "'\"" | sed 's/[^0-9].*//')
+            AUR_FULL="${AUR_VER}-${AUR_REL:-1}"
+            echo "Package name: $AUR_PKGNAME, version: $AUR_FULL"
             
             # Check current version on AUR
             AUR_LATEST=$(curl -s "https://aur.archlinux.org/rpc/v5/info?arg%5B%5D=${AUR_PKGNAME}" \
-              | python3 -c "import sys,json; d=json.load(sys.stdin); r=d.get('results',[]); print(r[0]['Version'].rsplit('-',1)[0] if r else '')" 2>/dev/null || echo "")
+              | python3 -c "import sys,json; d=json.load(sys.stdin); r=d.get('results',[]); print(r[0]['Version'] if r else '')" 2>/dev/null || echo "")
             echo "AUR latest: '$AUR_LATEST'"
             
-            if [ "$AUR_LATEST" = "$AUR_VER" ]; then
-              echo "→ ${AUR_PKGNAME}: version ${AUR_VER} already on AUR, skipping."
+            if [ "$AUR_LATEST" = "$AUR_FULL" ]; then
+              echo "→ ${AUR_PKGNAME}: version ${AUR_FULL} already on AUR, skipping."
               continue
             fi
             
             if [ -n "$AUR_LATEST" ]; then
-              echo "→ ${AUR_PKGNAME}: AUR has ${AUR_LATEST}, pushing ${AUR_VER}..."
+              echo "→ ${AUR_PKGNAME}: AUR has ${AUR_LATEST}, pushing ${AUR_FULL}..."
             else
-              echo "→ ${AUR_PKGNAME}: not found on AUR, pushing ${AUR_VER}..."
+              echo "→ ${AUR_PKGNAME}: not found on AUR, pushing ${AUR_FULL}..."
             fi
             
             # Clone AUR repo
@@ -365,7 +371,7 @@ jobs:
             else
               echo "⚠ .SRCINFO empty/missing — AUR pkg database won't refresh"
             fi
-            git commit -m "Update to ${AUR_VER}" 2>&1
+            git commit -m "Update to ${AUR_FULL}" 2>&1
             echo "Pushing to AUR..."
             git push origin HEAD 2>&1
             echo "Push done."
