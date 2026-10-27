@@ -1,11 +1,12 @@
 # Maintainer: Ackerman
 pkgname=rootapp-bin
 pkgver=0.9.155
-pkgrel=4
+pkgrel=5
 pkgdesc="Root App is a new Discord alternative, designed for gaming communities and large online groups"
 arch=('x86_64')
 url="https://www.rootapp.com"
 license=('LicenseRef-proprietary')
+# depends: DT_NEEDED of all 18 ELFs plus by-name dlopen probes, resolved in core+extra (2026-10-27).
 depends=('alsa-lib'
          'at-spi2-core'
          'cairo'
@@ -43,6 +44,7 @@ depends=('alsa-lib'
          'nss'
          'openssl'
          'pango'
+         'pciutils'
          'systemd-libs'
          'vulkan-icd-loader'
          'wayland'
