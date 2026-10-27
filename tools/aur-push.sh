@@ -66,6 +66,12 @@ for dir in "$@"; do
   for f in "$dir"/*.install "$dir"/*.patch "$dir"/*.diff; do
     [ -f "$f" ] && cp "$f" "$work/"
   done
+  while IFS= read -r f; do
+    [ -n "$f" ] || continue
+    [ -f "$dir/$f" ] || { echo "FAIL: local source $f missing in $dir"; exit 1; }
+    cp "$dir/$f" "$work/"
+  done < <(cd "$dir" && bash -c 'source PKGBUILD >/dev/null 2>&1; printf "%s\n" "${source[@]}"' \
+    | sed 's|^[^:]*::||' | grep -vE '^[a-zA-Z][a-zA-Z0-9+.-]*://')
 
   (
     cd "$work"
