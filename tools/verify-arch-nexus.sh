@@ -10,3 +10,17 @@ grep -qix "status: complete" "$RELAY" || { echo "FAIL: relay status not complete
 grep -qx "verified: bash tools/build-all.sh" "$RELAY" || { echo "FAIL: relay has no verified build line"; exit 1; }
 echo "PASS: relay run_id, status and verified line"
 bash tools/check-skills.sh
+
+# Guard: the news feed the runbook points the agent at must exist. It was
+# https://archlinux.org/news/feed/ until 2026-10-27 - a 404, so every run lost
+# the archlinux.org/news source without noticing. 404 is a hard failure here;
+# any other network error is only a warning so an archlinux.org outage cannot
+# fail a good run.
+feed=$(grep -rhoE 'https://archlinux\.org/[a-z/-]*news[a-z/]*' AGENTS.md | head -n 1)
+[ -n "$feed" ] || { echo "FAIL: AGENTS.md names no archlinux.org news feed"; exit 1; }
+code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 "$feed" 2>/dev/null || echo 000)
+if [ "$code" = "404" ]; then
+  echo "FAIL: $feed returns 404"
+  exit 1
+fi
+echo "OK   news feed $feed (HTTP $code)"

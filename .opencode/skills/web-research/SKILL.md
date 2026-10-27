@@ -17,7 +17,7 @@ Today's year is in the system date. Search for current facts, never rely on memo
 
 ## When a tool fails
 
-- `websearch` fails once: stop using it this run. Use `gh api`, then `curl --max-time 60 -fsSL` on raw.githubusercontent.com and https://archlinux.org/news/feed/ .
+- `websearch` fails once: stop using it this run. Use `gh api`, then `curl --max-time 60 -fsSL` on raw.githubusercontent.com and https://archlinux.org/feeds/news/ .
 - A failed search never stops the run. Write `websearch: curl fallback` in the relay.
 
 ## Use
