@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 2
 RUN_ID="${RUN_ID:-}"
 RELAY=".opencode-relay.md"
 echo "----- VERIFICATION REPORT -----"
@@ -20,3 +21,14 @@ if [ "$code" = "404" ]; then
   exit 1
 fi
 echo "OK   news feed $feed (HTTP $code)"
+
+# namcap: bare 'custom' is not SPDX, msg/error are makepkg internals (2026-10-27).
+if grep -HE "^license=\(.*'custom'[,)]" */PKGBUILD; then
+  echo "FAIL: bare 'custom' license is not an SPDX identifier (use LicenseRef-*)"
+  exit 1
+fi
+if grep -HnE "^[[:space:]]*(error|warning|msg|msg2|plain)[[:space:]]" */PKGBUILD; then
+  echo "FAIL: PKGBUILD calls an internal makepkg message helper"
+  exit 1
+fi
+echo "OK   PKGBUILD license ids and message helpers"
