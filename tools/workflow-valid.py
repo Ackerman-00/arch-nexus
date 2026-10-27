@@ -31,6 +31,7 @@ def problems(path):
     if not isinstance(doc, dict):
         return ["not a mapping"]
     vals = values()
+    keys = set(vals) or VALID_KEYS
     blocks = []
     if isinstance(doc.get("permissions"), dict):
         blocks.append(("top", doc["permissions"]))
@@ -39,7 +40,7 @@ def problems(path):
             blocks.append((jn, job["permissions"]))
     for where, perm in blocks:
         for k, v in perm.items():
-            if k not in VALID_KEYS:
+            if k not in keys:
                 out.append("%s: scope %s is not accepted by GitHub" % (where, k))
                 continue
             allowed = vals.get(k, {"read", "write", "none"})
