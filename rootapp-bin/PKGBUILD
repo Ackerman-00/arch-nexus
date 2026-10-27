@@ -67,7 +67,7 @@ prepare() {
     # build instead of shipping a package labelled with the wrong version.
     shipped=$(sed -n 's/^X-AppImage-Version=//p' "${srcdir}"/squashfs-root/*.desktop | head -n 1)
     if [ "$shipped" != "$pkgver" ]; then
-        error "payload is version ${shipped:-unknown}, pkgver is ${pkgver}"
+        printf 'payload is version %s, pkgver is %s\n' "${shipped:-unknown}" "$pkgver" >&2
         return 1
     fi
 }
