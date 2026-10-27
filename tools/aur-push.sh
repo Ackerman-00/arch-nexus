@@ -1,14 +1,4 @@
 #!/usr/bin/env bash
-# aur-push.sh <pkgdir>... - publish local PKGBUILD changes to the AUR.
-#
-# Called only by the scheduler's "Live package push to AUR" step, only when a
-# PKGBUILD changed during the run, and only with these secrets in scope:
-#   AUR_SSH_PRIVATE_KEY      SSH key with write access to aur.archlinux.org
-#   AUR_USERNAME             AUR account name (git author on the AUR side)
-#   REPO_FULL_ACCESS_TOKEN   fallback: push the bump to GitHub first when the
-#                            agent's own push did not land
-# Optional: AUR_EMAIL (defaults to <AUR_USERNAME>@users.noreply.github.com).
-# The agent's own step never sees any of them.
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 2
 
@@ -22,7 +12,6 @@ if [ "$#" -eq 0 ]; then
   exit 0
 fi
 
-# 1. The bump must be on origin/main before it goes live on the AUR.
 git fetch -q origin main || true
 if [ "$(git rev-parse HEAD)" != "$(git rev-parse origin/main)" ]; then
   echo "HEAD is not on origin/main - pushing the bump to GitHub first"
@@ -34,7 +23,6 @@ if [ "$(git rev-parse HEAD)" != "$(git rev-parse origin/main)" ]; then
   git push "https://x-access-token:${REPO_FULL_ACCESS_TOKEN}@github.com/${origin_path}.git" HEAD:main
 fi
 
-# 2. AUR SSH access (file only, never echoed).
 mkdir -p ~/.ssh
 ssh-keyscan aur.archlinux.org >> ~/.ssh/known_hosts 2>/dev/null || true
 umask 077
@@ -48,7 +36,6 @@ chmod 600 ~/.ssh/aur_key ~/.ssh/config
 
 docker pull "$IMAGE" >/dev/null 2>&1 || echo "WARN: docker pull failed, hoping for a cached image"
 
-# 3. One push per package.
 for dir in "$@"; do
   pkgbuild="$dir/PKGBUILD"
   if [ ! -f "$pkgbuild" ]; then

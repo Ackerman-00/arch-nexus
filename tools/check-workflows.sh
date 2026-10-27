@@ -1,12 +1,4 @@
 #!/usr/bin/env bash
-# check-workflows.sh - validate .github/workflows/*.yml before pushing them.
-#
-# A workflow file that GitHub rejects kills every run of it: the push creates
-# a failed run with no jobs and the schedule dies silently. That happened on
-# 2026-09-09 (commit ad69ca3 added the invalid scope `workflows: write`) and
-# again on 2026-10-20 (the scopes `code-quality` and `vulnerability-alerts` are
-# NOT valid in a permissions block, even though the docs table lists them).
-# actionlint is the authority on the accepted scope list, not the docs prose.
 set -uo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 2
 FAIL=0
@@ -24,8 +16,6 @@ for f in sorted(glob.glob(".github/workflows/*.yml")):
 PY
 
 echo "== actionlint =="
-# -shellcheck= disables shellcheck integration: its style infos are not
-# workflow validity and would otherwise fail a valid file.
 AL_VERSION=1.7.12
 AL_SHA256=8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
 al=$(command -v actionlint 2>/dev/null)

@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# check-skills.sh - the skill list in AGENTS.md and the CI prompt must match .opencode/skills.
 set -uo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 2
 

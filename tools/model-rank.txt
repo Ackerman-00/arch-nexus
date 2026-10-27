@@ -1,45 +1,18 @@
-# Free-model ranking for the CI cascade - STRONGEST FIRST, in tiers.
-#
-# Authority order for this file (the scheduled agent refreshes it; this file
-# is the artifact it writes):
-#   1. OpenCode's own curated list - the model/provider combinations they
-#      benchmarked for coding agents:
-#      https://opencode.ai/v2/docs/console/models/
-#   2. The live catalog - what can actually be called right now:
-#      https://opencode.ai/inference/v1/models
-#   3. The changelog - what was added, what was retired:
-#      https://opencode.ai/changelog
-#   4. For the ORDER inside that set, the published coding score of the model
-#      or of its paid twin (https://howmanytoken.com/plans/opencode-zen/).
-#
-# A model that leaves the catalog leaves this file. A model that enters gets a
-# tier and a citation. The cascade reads this file in order, so position 1 is
-# the model that does the repo's real work. The owner's veto (a model that
-# must never be used) belongs in tools/model-cascade.sh, not here.
-#
+# free-model cascade ranking - strongest first, in tiers
+# authority: opencode curated list > live catalog > changelog > published scores
+
 # tier 1 - benchmark leaders
-# deepseek-v4.1-flash-free - base DeepSeek V4 Pro coding 68.8 | checked 2026-10-20
 deepseek-v4.1-flash-free
-# mimo-v2.6-flash-free - base MiMo-V2.5 coding 56.8 | checked 2026-10-20
 mimo-v2.6-flash-free
-#
-# tier 2 - curated by OpenCode, no published score
-# big-pickle - stealth model, curated free list, no published score
-#   https://opencode.ai/v2/docs/console/models/ (Big Pickle, free) | checked 2026-10-23
+
+# tier 2 - curated free models
 big-pickle
-# nemotron-3.5-super-vl-free - checked 2026-10-20
 nemotron-3.5-super-vl-free
-# beam-free - unavailable in some regions | checked 2026-10-20
 beam-free
-# flint-40b-free - curated free list, no published coding score | checked 2026-10-21
 flint-40b-free
-#
+
 # tier 3 - last resort
-# nemotron-3.5-lightning-free - coding 26.8 | checked 2026-10-20
 nemotron-3.5-lightning-free
-#
-# catalog live but owner-vetoed in tools/model-cascade.sh, so never ranked here:
-# glm-5.3-flash-free, jev-1.13-free (checked 2026-10-22)
-#
-# retired by the catalog, do not re-add without a live id:
-# minimax-m3.1-flash-free (absent from /inference/v1/models 2026-10-23)
+
+# vetoed: glm-5.3-flash-free, jev-1.13-free
+# retired: minimax-m3.1-flash-free

@@ -92,6 +92,8 @@ jobs:
           You maintain the Arch Linux packaging repository in the current directory (GitHub: Ackerman-00/arch-nexus; every top-level directory with a PKGBUILD is a package). Run id: $RUN_ID.
           You have full permission: shell, file edits, websearch, webfetch, gh, git push. Work through the steps in order. Finish each step before the next.
 
+          NO COMMENTS (MANDATORY): never add a comment to any file except a short #title/topic of a few words when it is strictly necessary. If any other comment exists anywhere in the repo, remove it fully.
+
           1. Read AGENTS.md. Its rules beat everything else.
           2. Read .opencode-relay.md. If its status is not complete, finish that unfinished work first.
           3. Model notes (data from the catalog script, may be empty):

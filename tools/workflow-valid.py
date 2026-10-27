@@ -1,19 +1,5 @@
 #!/usr/bin/env python3
-"""workflow-valid.py <file> - is this a workflow file GitHub will accept?
-
-Two rules, from two sources, because neither is the whole truth:
-
-- the key set is actionlint's list. The GitHub docs table and the JSON schema
-  both list code-quality and vulnerability-alerts, and a workflow carrying
-  either is rejected at parse time - every run of it dies, and the agent that
-  would fix it cannot run either (2026-10-20).
-- the values per key are the machine-readable schema's:
-  https://json.schemastore.org/github-workflow.json (definitions.permissions-event),
-  vendored in tools/permissions-schema.json. vulnerability-alerts and models
-  take read|none, id-token takes write|none, copilot-requests takes write.
-
-Exit 0 = valid, 1 = not. Usage: workflow-valid.py <file> [<file> ...]
-"""
+"""workflow-valid.py <file> - permission scopes GitHub will accept. Exit 0 = valid, 1 = not."""
 import json
 import os
 import sys

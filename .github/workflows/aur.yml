@@ -128,7 +128,6 @@ jobs:
               if not m:
                   return []
               urls = re.findall(r'(https?://[^\s"\'()>]+)', m.group(1))
-              # Handle PKGBUILD source syntax: "name::url" or just "url"
               result = []
               for u in urls:
                   if '::' in u:
@@ -159,7 +158,6 @@ jobs:
               except Exception:
                   return None
 
-          # ---------- Main ----------
           subprocess.run(['git', 'config', 'user.name', 'github-actions[bot]'], check=True)
           subprocess.run(['git', 'config', 'user.email',
                           'github-actions[bot]@users.noreply.github.com'], check=True)
@@ -186,7 +184,6 @@ jobs:
               strategy = detect_strategy(raw, pkgname)
               if not strategy:
                   print(f"  ⤼ No update strategy for {pkgname}, skipping.")
-                  # Still check if AUR push needed
                   aur_ver = get_aur_version(pkgname)
                   if aur_ver and aur_ver != full_ver:
                       needs_aur_push.append(entry)
@@ -242,7 +239,6 @@ jobs:
                   print(f"  ✅ Updated {pkgname}: {curr_ver} → {new_ver}")
               else:
                   print(f"  → Already latest.")
-                  # Even if upstream is latest, check if AUR needs sync
                   aur_ver = get_aur_version(pkgname)
                   if aur_ver and aur_ver != full_ver:
                       needs_aur_push.append(entry)
@@ -253,7 +249,6 @@ jobs:
                   else:
                       print(f"  → AUR already at {full_ver}.")
 
-          # Commit and push to GitHub (only if PKGBUILDs changed)
           push_ok = True
           if updated_packages:
               subprocess.run(['git', 'add', '-A'], check=True)
@@ -290,7 +285,6 @@ jobs:
               else:
                   print(f"\n⚠ Git push failed — AUR push will still proceed")
 
-          # Write updated packages list for AUR push step (includes AUR sync packages)
           os.makedirs('/tmp/aur-state', exist_ok=True)
           with open('/tmp/aur-state/updated.txt', 'w') as f:
               for pkg in needs_aur_push:
@@ -329,7 +323,6 @@ jobs:
             AUR_FULL="${AUR_VER}-${AUR_REL:-1}"
             echo "Package name: $AUR_PKGNAME, version: $AUR_FULL"
             
-            # Check current version on AUR
             AUR_LATEST=$(curl -s "https://aur.archlinux.org/rpc/v5/info?arg%5B%5D=${AUR_PKGNAME}" \
               | python3 -c "import sys,json; d=json.load(sys.stdin); r=d.get('results',[]); print(r[0]['Version'] if r else '')" 2>/dev/null || echo "")
             echo "AUR latest: '$AUR_LATEST'"
@@ -345,19 +338,16 @@ jobs:
               echo "→ ${AUR_PKGNAME}: not found on AUR, pushing ${AUR_FULL}..."
             fi
             
-            # Clone AUR repo
             WORKDIR=$(mktemp -d)
             echo "Cloning AUR repo into $WORKDIR..."
             git clone "ssh://aur@aur.archlinux.org/${AUR_PKGNAME}.git" "$WORKDIR" 2>&1
             echo "Clone done."
             
-            # Copy updated files
             cp "${PKGBUILD_DIR}/PKGBUILD" "$WORKDIR/"
             for f in "${PKGBUILD_DIR}"/*.install "${PKGBUILD_DIR}"/*.patch "${PKGBUILD_DIR}"/*.diff; do
               [ -f "$f" ] && cp "$f" "$WORKDIR/"
             done
             
-            # Generate .SRCINFO — required for AUR package database metadata
             cd "$WORKDIR"
             rm -f .SRCINFO
             docker run --rm -v "$WORKDIR:/work" archlinux:latest \

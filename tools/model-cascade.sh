@@ -1,16 +1,9 @@
 #!/usr/bin/env bash
-# model-cascade.sh - print the CI free-model fallback chain, strongest first.
-#
-# The order lives in tools/model-rank.txt (data, not code) so a new model can
-# be ranked without touching this script. Ids the catalog stopped serving are
-# dropped; ids it newly serves are appended and announced on stderr, so the
-# agent can research and rank them on the next run.
 set -uo pipefail
 
 CATALOG="${OC_MODELS_URL:-https://opencode.ai/inference/v1/models}"
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 RANK_FILE="${OC_MODEL_RANK:-$HERE/model-rank.txt}"
-# Owner veto: never used by the CI cascade.
 EXCLUDE=" glm-5.3-flash-free jev-1.13-free "
 
 live=$(curl -sS --max-time 30 "$CATALOG" 2>/dev/null | python3 -c '
@@ -74,7 +67,7 @@ if [ "${#new[@]}" -gt 0 ]; then
   echo "NEW FREE MODELS (not ranked yet - research and rank them): ${new[*]}" >&2
 fi
 if [ "${#retired[@]}" -gt 0 ]; then
-  echo "RETIRED FREE MODELS (catalog stopped serving them - drop them from tools/model-rank.txt): ${retired[*]}" >&2
+  echo "RETIRED FREE MODELS (drop them from tools/model-rank.txt): ${retired[*]}" >&2
 fi
 
 for id in "${chain[@]}"; do printf 'opencode/%s\n' "$id"; done

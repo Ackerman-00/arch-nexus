@@ -1,6 +1,6 @@
 {
   "_fetched": "2026-10-20",
-  "_note": "Key set and per-key values, taken from the machine-readable schema. actionlint's key list is stricter (it excludes code-quality and vulnerability-alerts) and GitHub's own validator matches actionlint: a workflow carrying either key is rejected at parse time and every run of it dies. Scope the key list by actionlint, the values by this schema - vulnerability-alerts and models take read|none, id-token and copilot-requests are special.",
+  "_note": "keys = actionlint's valid set; values = schemastore github-workflow permissions-event",
   "_source": "https://json.schemastore.org/github-workflow.json (definitions.permissions-event)",
   "scopes": {
     "actions": [

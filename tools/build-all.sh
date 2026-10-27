@@ -1,10 +1,4 @@
 #!/usr/bin/env bash
-# build-all.sh - build every PKGBUILD in this repo inside a clean Arch container.
-#
-# This is the repo's mandatory verification (AGENTS.md, relay `verified:` line).
-# Nothing weaker counts as proof that a package ships: not shellcheck, not
-# `makepkg --printsrcinfo`, not a parse. Fresh archlinux:latest each run,
-# deps installed by `makepkg -s`, a non-root builder (makepkg refuses root).
 set -uo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 2
 
