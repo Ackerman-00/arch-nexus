@@ -22,6 +22,16 @@ if [ "$code" = "404" ]; then
 fi
 echo "OK   news feed $feed (HTTP $code)"
 
+# The CI prompt lives in a file this step cannot push to (no workflows scope); a dead URL there is a warning.
+for feed in $(grep -rhoE 'https://archlinux\.org/[a-z/-]*news[a-z/]*' .github/workflows/*.yml 2>/dev/null | sort -u || true); do
+  code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 "$feed" 2>/dev/null || echo 000)
+  if [ "$code" = "404" ]; then
+    echo "WARN: workflow URL $feed returns 404 - the feed in AGENTS.md is the one that works"
+  else
+    echo "OK   workflow URL $feed (HTTP $code)"
+  fi
+done
+
 # namcap: bare 'custom' is not SPDX, msg/error are makepkg internals (2026-10-27).
 if grep -HE "^license=\(.*'custom'[,)]" */PKGBUILD; then
   echo "FAIL: bare 'custom' license is not an SPDX identifier (use LicenseRef-*)"
