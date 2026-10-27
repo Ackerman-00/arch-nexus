@@ -61,10 +61,7 @@ prepare() {
     "${srcdir}/Root-${pkgver}-x86_64.AppImage" --appimage-extract
     chmod go-w squashfs-root
 
-    # The distfile URL is versionless, so upstream can swap the payload under
-    # the pinned pkgver; X-AppImage-Version inside the AppImage is the only
-    # authoritative version (2026-10-27, same field aur.yml reads). Fail the
-    # build instead of shipping a package labelled with the wrong version.
+    # X-AppImage-Version must equal pkgver: the URL is versionless (2026-10-27).
     shipped=$(sed -n 's/^X-AppImage-Version=//p' "${srcdir}"/squashfs-root/*.desktop | head -n 1)
     if [ "$shipped" != "$pkgver" ]; then
         printf 'payload is version %s, pkgver is %s\n' "${shipped:-unknown}" "$pkgver" >&2

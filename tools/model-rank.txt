@@ -1,5 +1,5 @@
 # free-model cascade ranking - strongest first, in tiers
-# authority: opencode curated list > live catalog > changelog > published scores
+# authority: curated list > live catalog > changelog > scores
 
 # tier 1 - benchmark leaders
 deepseek-v4.1-flash-free
