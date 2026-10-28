@@ -36,6 +36,7 @@ chmod 600 ~/.ssh/aur_key ~/.ssh/config
 
 docker pull "$IMAGE" >/dev/null 2>&1 || echo "WARN: docker pull failed, hoping for a cached image"
 
+rc=0
 for dir in "$@"; do
   pkgbuild="$dir/PKGBUILD"
   if [ ! -f "$pkgbuild" ]; then
@@ -61,19 +62,30 @@ for dir in "$@"; do
   fi
 
   work=$(mktemp -d)
-  git clone -q "ssh://aur@aur.archlinux.org/${pkgname}.git" "$work"
+  if ! git clone -q "ssh://aur@aur.archlinux.org/${pkgname}.git" "$work"; then
+    echo "FAIL: cannot clone ${pkgname}.git from AUR"
+    rm -rf "$work"
+    rc=1
+    continue
+  fi
   cp "$pkgbuild" "$work/"
   for f in "$dir"/*.install "$dir"/*.patch "$dir"/*.diff; do
     [ -f "$f" ] && cp "$f" "$work/"
   done
+  missing=0
   while IFS= read -r f; do
     [ -n "$f" ] || continue
-    [ -f "$dir/$f" ] || { echo "FAIL: local source $f missing in $dir"; exit 1; }
+    [ -f "$dir/$f" ] || { echo "FAIL: local source $f missing in $dir"; missing=1; break; }
     cp "$dir/$f" "$work/"
   done < <(cd "$dir" && bash -c 'source PKGBUILD >/dev/null 2>&1; printf "%s\n" "${source[@]}"' \
     | sed 's|^[^:]*::||' | grep -vE '^[a-zA-Z][a-zA-Z0-9+.-]*://')
+  if [ "$missing" -ne 0 ]; then
+    rm -rf "$work"
+    rc=1
+    continue
+  fi
 
-  (
+  if ( set -e
     cd "$work"
     rm -f .SRCINFO
     docker run --rm -v "$work:/work" "$IMAGE" bash -c \
@@ -95,8 +107,16 @@ for dir in "$@"; do
     fi
     git commit -q -m "Update to ${fullver}"
     git push -q origin HEAD
-  )
-  echo "pushed $pkgname $fullver to AUR"
+  ); then
+    echo "pushed $pkgname $fullver to AUR"
+  else
+    echo "FAIL: AUR push of $pkgname $fullver failed"
+    rc=1
+  fi
   rm -rf "$work"
 done
+if [ "$rc" -ne 0 ]; then
+  echo "AUR PUSH INCOMPLETE"
+  exit 1
+fi
 echo "AUR PUSH DONE"
