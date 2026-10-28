@@ -12,7 +12,6 @@ grep -qx "verified: bash tools/build-all.sh" "$RELAY" || { echo "FAIL: relay has
 echo "PASS: relay run_id, status and verified line"
 bash tools/check-skills.sh
 
-# The AGENTS.md news feed must not 404 (2026-10-27); other errors only warn.
 feed=$(grep -rhoE 'https://archlinux\.org/[a-z/-]*news[a-z/]*' AGENTS.md | head -n 1)
 [ -n "$feed" ] || { echo "FAIL: AGENTS.md names no archlinux.org news feed"; exit 1; }
 code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 "$feed" 2>/dev/null || echo 000)
@@ -22,7 +21,6 @@ if [ "$code" = "404" ]; then
 fi
 echo "OK   news feed $feed (HTTP $code)"
 
-# The CI prompt lives in a file this step cannot push to (no workflows scope); a dead URL there is a warning.
 for feed in $(grep -rhoE 'https://archlinux\.org/[a-z/-]*news[a-z/]*' .github/workflows/*.yml 2>/dev/null | sort -u || true); do
   code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 "$feed" 2>/dev/null || echo 000)
   if [ "$code" = "404" ]; then
@@ -32,7 +30,6 @@ for feed in $(grep -rhoE 'https://archlinux\.org/[a-z/-]*news[a-z/]*' .github/wo
   fi
 done
 
-# namcap: bare 'custom' is not SPDX, msg/error are makepkg internals (2026-10-27).
 if grep -HE "^license=\(.*'custom'[,)]" */PKGBUILD; then
   echo "FAIL: bare 'custom' license is not an SPDX identifier (use LicenseRef-*)"
   exit 1
@@ -42,3 +39,20 @@ if grep -HnE "^[[:space:]]*(error|warning|msg|msg2|plain)[[:space:]]" */PKGBUILD
   exit 1
 fi
 echo "OK   PKGBUILD license ids and message helpers"
+
+python3 - <<'PYG'
+import re, glob, sys
+bad=0
+for f in glob.glob("*/PKGBUILD"):
+    t=open(f).read()
+    src=re.search(r'^source(?:_[a-zA-Z0-9_]+)?=\((.*?)\)', t, re.M|re.S)
+    sha=re.search(r'^sha256sums(?:_[a-zA-Z0-9_]+)?=\((.*?)\)', t, re.M|re.S)
+    if not src or not sha: 
+        continue
+    nsrc=len(re.findall(r"'[^']*'", src.group(1))) + len(re.findall(r'"[^"]*"', src.group(1)))
+    nsha=len(re.findall(r"'[0-9a-f]{64}'", sha.group(1)))
+    if nsrc!=nsha:
+        print("FAIL %s: source count %d != sha256sums count %d" % (f,nsrc,nsha)); bad=1
+if bad: sys.exit(1)
+print("OK   source/sha256sums counts match")
+PYG
