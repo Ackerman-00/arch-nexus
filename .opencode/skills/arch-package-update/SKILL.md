@@ -11,7 +11,7 @@ A `PKGBUILD` with a fixed `pkgver` and `sha256sums` never changes by itself. You
 
 - `find . -mindepth 1 -maxdepth 2 -name PKGBUILD -not -path './.git/*'` and read each one.
 - Write a list: name, current pkgver-pkgrel, upstream source (distfile URL / GitHub repo).
-- Known: `rootapp-bin` (AppImage from installer.rootapp.com, no GitHub release feed - the version comes from `X-AppImage-Version` inside the AppImage's `.desktop`, which `aur.yml`'s scanner also reads).
+- Known: `rootapp-bin` (AppImage from installer.rootapp.com, no GitHub release feed - the version comes from `X-AppImage-Version` inside the AppImage's `.desktop`, which `prepare()` also verifies against `pkgver`).
 
 ## 2. Update each package. Use the first method that works
 
