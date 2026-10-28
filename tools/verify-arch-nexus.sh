@@ -56,3 +56,46 @@ for f in glob.glob("*/PKGBUILD"):
 if bad: sys.exit(1)
 print("OK   source/sha256sums counts match")
 PYG
+
+python3 - <<'PYD'
+import glob, re, sys, tarfile, urllib.request
+
+URL = "https://geo.mirror.pkgbuild.com/%s/os/x86_64/%s.files"
+ships = {}
+fetched = set()
+for repo in ("core", "extra"):
+    try:
+        with urllib.request.urlopen(URL % (repo, repo), timeout=180) as r:
+            tf = tarfile.open(fileobj=r, mode="r|gz")
+            for m in tf:
+                if not m.name.endswith("/files"):
+                    continue
+                pkg = re.sub(r"-[^-]+-[^-]+$", "", m.name.split("/")[0])
+                fh = tf.extractfile(m)
+                ships[pkg] = sum(1 for line in fh if line.strip() and not line.startswith(b"%"))
+        fetched.add(repo)
+    except Exception as exc:
+        print("WARN: %s.files unavailable (%s)" % (repo, exc))
+
+if len(fetched) < 2:
+    print("WARN: live package index incomplete - depends not re-checked")
+    sys.exit(0)
+
+bad = 0
+for path in sorted(glob.glob("*/PKGBUILD")):
+    text = open(path).read()
+    block = re.search(r"^depends=\((.*?)\)", text, re.M | re.S)
+    if not block:
+        continue
+    for dep in re.findall(r"'([^']+)'", block.group(1)):
+        name = re.split(r"[<>=]", dep)[0]
+        if name not in ships:
+            print("FAIL %s: depends %s is not in core or extra" % (path, name))
+            bad = 1
+        elif ships[name] == 0:
+            print("FAIL %s: depends %s ships no files - list the real provider" % (path, name))
+            bad = 1
+if bad:
+    sys.exit(1)
+print("OK   depends resolve to non-empty core/extra packages")
+PYD
