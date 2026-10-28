@@ -53,6 +53,9 @@ depends=('alsa-lib'
          'xdg-utils')
 provides=('rootapp')
 conflicts=('rootapp')
+optdepends=('xdg-desktop-portal: file picker and screen-share dialogs'
+            'xdg-desktop-portal-gtk: file picker backend on non-KDE desktops'
+            'pipewire-pulse: PulseAudio-compatible server for voice and audio devices')
 options=('!strip' '!debug')
 
 source=("Root-${pkgver}-x86_64.AppImage::https://installer.rootapp.com/installer/Linux/X64/Root.AppImage"
