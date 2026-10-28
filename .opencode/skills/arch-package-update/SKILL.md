@@ -26,7 +26,7 @@ C. Then, always:
 1. Build the new distfile URL from the pattern already in `source=()`.
 2. `sha256sum` the file you actually downloaded. Paste it into `sha256sums=()`. Never guess a hash.
 3. Version rules: new upstream version -> `pkgver=` changes and `pkgrel=1`; packaging-only change (deps, install logic, desktop file) -> same `pkgver`, `pkgrel` +1.
-4. Edit with str_replace. Never invent a version.
+4. Edit with the `edit` tool. Never invent a version.
 
 ## 3. Verify
 
