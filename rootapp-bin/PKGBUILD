@@ -91,7 +91,7 @@ WRAPPER_EOF
     install -Dm644 "${srcdir}/squashfs-root/Root.png" "${pkgdir}/usr/share/icons/hicolor/512x512/apps/rootapp.png"
 
     install -dm755 "${pkgdir}/usr/share/applications"
-    cat > "${pkgdir}/usr/share/applications/rootapp.desktop" <<'EOF'
+    cat > "${pkgdir}/usr/share/applications/rootapp-app.desktop" <<'EOF'
 [Desktop Entry]
 Type=Application
 Name=Root
