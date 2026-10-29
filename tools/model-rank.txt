@@ -1,18 +1,7 @@
-# free-model cascade ranking - strongest first, in tiers
-# authority: curated list > live catalog > changelog > scores
-
-# tier 1 - benchmark leaders
 deepseek-v4.1-flash-free
 mimo-v2.6-flash-free
-
-# tier 2 - curated free models
 big-pickle
 nemotron-3.5-super-vl-free
 beam-free
 flint-40b-free
-
-# tier 3 - last resort
 nemotron-3.5-lightning-free
-
-# vetoed: glm-5.3-flash-free, jev-1.13-free
-# retired: minimax-m3.1-flash-free
