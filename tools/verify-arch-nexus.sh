@@ -84,18 +84,19 @@ if len(fetched) < 2:
 bad = 0
 for path in sorted(glob.glob("*/PKGBUILD")):
     text = open(path).read()
-    block = re.search(r"^depends=\((.*?)\)", text, re.M | re.S)
-    if not block:
-        continue
-    for dep in re.findall(r"'([^']+)'", block.group(1)):
-        name = re.split(r"[<>=]", dep)[0]
-        if name not in ships:
-            print("FAIL %s: depends %s is not in core or extra" % (path, name))
-            bad = 1
-        elif ships[name] == 0:
-            print("FAIL %s: depends %s ships no files - list the real provider" % (path, name))
-            bad = 1
+    for array in ("depends", "optdepends"):
+        block = re.search(r"^%s=\((.*?)\)" % array, text, re.M | re.S)
+        if not block:
+            continue
+        for dep in re.findall(r"'([^']+)'", block.group(1)):
+            name = re.split(r"[<>=:]", dep)[0].strip()
+            if name not in ships:
+                print("FAIL %s: %s %s is not in core or extra" % (path, array, name))
+                bad = 1
+            elif ships[name] == 0:
+                print("FAIL %s: %s %s ships no files - list the real provider" % (path, array, name))
+                bad = 1
 if bad:
     sys.exit(1)
-print("OK   depends resolve to non-empty core/extra packages")
+print("OK   depends and optdepends resolve to non-empty core/extra packages")
 PYD
