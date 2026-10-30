@@ -69,5 +69,18 @@ fi
 if [ "${#retired[@]}" -gt 0 ]; then
   echo "RETIRED FREE MODELS (drop them from tools/model-rank.txt): ${retired[*]}" >&2
 fi
+if [ -n "$live" ] && [ -f "$HERE/../opencode.json" ]; then
+  cfg_retired=$(python3 -c '
+import json, sys
+try:
+    cfg = json.load(open(sys.argv[1]))
+except Exception:
+    sys.exit(0)
+models = cfg.get("providers", {}).get("opencode", {}).get("models", {})
+live = set(sys.argv[2:])
+print(" ".join(m for m in models if m not in live))
+' "$HERE/../opencode.json" $live)
+  [ -z "$cfg_retired" ] || echo "RETIRED IN opencode.json (drop them): $cfg_retired" >&2
+fi
 
 for id in "${chain[@]}"; do printf 'opencode/%s\n' "$id"; done

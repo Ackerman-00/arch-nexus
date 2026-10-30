@@ -53,10 +53,6 @@
           "name": "Flint 40B Free",
           "modelID": "flint-40b-free"
         },
-        "jev-1.13-free": {
-          "name": "Jev 1.13 Free",
-          "modelID": "jev-1.13-free"
-        },
         "big-pickle": {
           "name": "Big Pickle",
           "modelID": "big-pickle",
