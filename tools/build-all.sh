@@ -11,6 +11,11 @@ if [ "${#PKGS[@]}" -eq 0 ]; then
   exit 1
 fi
 
+if ! python3 tools/check-sources.py; then
+  echo "FAIL: PKGBUILD source/sha256sums mismatch, the container build cannot pass"
+  exit 1
+fi
+
 if ! docker pull "$IMAGE" >/dev/null 2>&1; then
   echo "WARN: docker pull $IMAGE failed, falling back to a cached image if present"
 fi

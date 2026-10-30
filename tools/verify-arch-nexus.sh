@@ -40,22 +40,7 @@ if grep -HnE "^[[:space:]]*(error|warning|msg|msg2|plain)[[:space:]]" */PKGBUILD
 fi
 echo "OK   PKGBUILD license ids and message helpers"
 
-python3 - <<'PYG'
-import re, glob, sys
-bad=0
-for f in glob.glob("*/PKGBUILD"):
-    t=open(f).read()
-    src=re.search(r'^source(?:_[a-zA-Z0-9_]+)?=\((.*?)\)', t, re.M|re.S)
-    sha=re.search(r'^sha256sums(?:_[a-zA-Z0-9_]+)?=\((.*?)\)', t, re.M|re.S)
-    if not src or not sha: 
-        continue
-    nsrc=len(re.findall(r"'[^']*'", src.group(1))) + len(re.findall(r'"[^"]*"', src.group(1)))
-    nsha=len(re.findall(r"'[0-9a-f]{64}'", sha.group(1)))
-    if nsrc!=nsha:
-        print("FAIL %s: source count %d != sha256sums count %d" % (f,nsrc,nsha)); bad=1
-if bad: sys.exit(1)
-print("OK   source/sha256sums counts match")
-PYG
+python3 tools/check-sources.py || exit 1
 
 python3 - <<'PYD'
 import glob, re, sys, tarfile, urllib.request
