@@ -43,6 +43,11 @@ for dir in "$@"; do
     echo "skip $dir: no PKGBUILD"
     continue
   fi
+  if ! python3 tools/check-sources.py "$pkgbuild"; then
+    echo "FAIL: $dir source/sha256sums mismatch - not publishing it"
+    rc=1
+    continue
+  fi
   pkgname=$(grep -m1 '^pkgname=' "$pkgbuild" | sed 's/^pkgname=//' | tr -d "\"'")
   pkgver=$(grep -m1 '^pkgver=' "$pkgbuild" | sed 's/^pkgver=//' | tr -d "\"'")
   pkgrel=$(grep -m1 '^pkgrel=' "$pkgbuild" | sed 's/^pkgrel=//' | tr -d "\"'" | sed 's/[^0-9].*//')

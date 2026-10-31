@@ -6,7 +6,7 @@ import sys
 HEX64 = r"'[0-9a-f]{64}'"
 
 bad = 0
-for path in sorted(glob.glob("*/PKGBUILD")):
+for path in (sys.argv[1:] or sorted(glob.glob("*/PKGBUILD"))):
     text = open(path).read()
     src = re.search(r"^source(?:_[a-zA-Z0-9_]+)?=\((.*?)\)", text, re.M | re.S)
     sha = re.search(r"^sha256sums(?:_[a-zA-Z0-9_]+)?=\((.*?)\)", text, re.M | re.S)
