@@ -87,6 +87,9 @@ for path in sorted(glob.glob("*/PKGBUILD")):
     if backends and "xdg-desktop-portal" not in names:
         print("FAIL %s: %s declared without the xdg-desktop-portal service they plug into" % (path, " ".join(backends)))
         bad = 1
+    if "openssl" in names and not any(n.startswith("ca-certificates") for n in names):
+        print("FAIL %s: openssl without a ca-certificates package - TLS trust anchors are data, not a soname" % path)
+        bad = 1
 if bad:
     sys.exit(1)
 print("OK   depends and optdepends resolve to non-empty core/extra packages")
