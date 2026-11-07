@@ -71,6 +71,22 @@ jobs:
             *) echo "FATAL: need opencode 2.x, got '$ver'" >&2; exit 1 ;;
           esac
 
+      - name: Import OpenCode account credentials
+        shell: bash
+        env:
+          OPENCODE_AUTH_JSON: ${{ secrets.OPENCODE_AUTH_JSON }}
+        run: |
+          if [ -n "$OPENCODE_AUTH_JSON" ]; then
+            printf '%s\n' "$OPENCODE_AUTH_JSON" > "$RUNNER_TEMP/opencode-auth.json"
+            if opencode auth import "$RUNNER_TEMP/opencode-auth.json"; then
+              echo "OpenCode account credentials imported (authenticated run)"
+            else
+              echo "WARN: opencode auth import failed - falling back to anonymous limits"
+            fi
+          else
+            echo "OPENCODE_AUTH_JSON secret not set - running with anonymous free-tier limits"
+          fi
+
       - name: Run opencode
         shell: bash
         timeout-minutes: 300
@@ -132,8 +148,14 @@ jobs:
             left=$(( deadline - $(date +%s) ))
             [ "$left" -gt 300 ] || break
             echo "opencode run attempt with $model (${left}s left)"
+            OCLOG="$RUNNER_TEMP/opencode-out.txt"
             MODEL="$model" timeout --signal=TERM --kill-after=60s "${left}s" \
-              opencode run --standalone --model "$model" --agent build "$PROMPT" || true
+              opencode run --standalone --model "$model" --agent build "$PROMPT" 2>&1 | tee "$OCLOG" || true
+            if grep -qi 'free usage limit reached' "$OCLOG" 2>/dev/null; then
+              echo "=== $model: OpenCode free usage limit reached - moving to next model ==="
+              sleep 5
+              continue
+            fi
             if grep -qx "run_id: $RUN_ID" .opencode-relay.md 2>/dev/null && grep -qix "status: complete" .opencode-relay.md; then
               exit 0
             fi

@@ -60,6 +60,30 @@
             "context": 200000,
             "output": 32000
           }
+        },
+        "inkling-2-small-free": {
+          "name": "Inkling 2 Small Free",
+          "modelID": "inkling-2-small-free",
+          "limit": {
+            "context": 1048576,
+            "output": 131072
+          }
+        },
+        "crouton-alpha-free": {
+          "name": "Crouton Alpha Free",
+          "modelID": "crouton-alpha-free",
+          "limit": {
+            "context": 1048576,
+            "output": 270000
+          }
+        },
+        "iceman-free": {
+          "name": "Iceman Free",
+          "modelID": "iceman-free",
+          "limit": {
+            "context": 262144,
+            "output": 131072
+          }
         }
       }
     }

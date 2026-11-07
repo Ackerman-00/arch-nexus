@@ -1,7 +1,23 @@
+# free-model cascade ranking - strongest first, in tiers
+# authority: opencode curated list > live catalog > changelog > published scores
+
+# tier 1 - user-selected leaders (2026-11-07): best published capability first
+inkling-2-small-free
+crouton-alpha-free
+iceman-free
+flint-40b-free
+
+# tier 2 - proven fallbacks (long track record in this repo)
 deepseek-v4.1-flash-free
 mimo-v2.6-flash-free
+
+# tier 3 - curated free models
+beam-free
 big-pickle
 nemotron-3.5-super-vl-free
-beam-free
-flint-40b-free
+
+# tier 4 - last resort
 nemotron-3.5-lightning-free
+
+# vetoed: glm-5.3-flash-free, jev-1.13-free
+# retired: minimax-m3.1-flash-free
