@@ -36,6 +36,14 @@ else
   FAIL=1
 fi
 
+echo "== secret-bearing trace guard =="
+if grep -nE 'set[[:space:]]+-x|xtrace' .github/workflows/*.yml; then
+  echo "FAIL: shell tracing in a workflow echoes expanded secrets into the log"
+  FAIL=1
+else
+  echo "OK   no shell tracing in workflows"
+fi
+
 echo "== permission scopes =="
 if python3 tools/workflow-valid.py .github/workflows/*.yml; then
   :
