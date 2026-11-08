@@ -20,7 +20,8 @@ if [ "$(git rev-parse HEAD)" != "$(git rev-parse origin/main)" ]; then
     exit 1
   fi
   origin_path="$(git remote get-url origin | sed 's#^https://github.com/##; s#^git@github.com:##; s#\.git$##')"
-  git push "https://x-access-token:${REPO_FULL_ACCESS_TOKEN}@github.com/${origin_path}.git" HEAD:main
+  git -c credential.helper='!f() { echo username=x-access-token; echo "password=${REPO_FULL_ACCESS_TOKEN}"; }; f' \
+    push "https://github.com/${origin_path}.git" HEAD:main
 fi
 
 mkdir -p ~/.ssh
