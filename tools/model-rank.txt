@@ -9,6 +9,7 @@ flint-40b-free
 # tier 2 - proven fallbacks (long track record in this repo)
 deepseek-v4.1-flash-free
 mimo-v2.6-flash-free
+minimax-m3.1-flash-free
 
 # tier 3 - curated free models
 beam-free
@@ -20,4 +21,4 @@ longcat-2.5-free
 nemotron-3.5-lightning-free
 
 # vetoed: glm-5.3-flash-free, jev-1.13-free
-# retired: minimax-m3.1-flash-free, crouton-alpha-free
+# retired: crouton-alpha-free
