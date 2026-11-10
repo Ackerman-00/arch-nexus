@@ -69,14 +69,6 @@
             "output": 131072
           }
         },
-        "crouton-alpha-free": {
-          "name": "Crouton Alpha Free",
-          "modelID": "crouton-alpha-free",
-          "limit": {
-            "context": 1048576,
-            "output": 270000
-          }
-        },
         "longcat-2.5-free": {
           "name": "LongCat 2.5 Free",
           "modelID": "longcat-2.5-free",
