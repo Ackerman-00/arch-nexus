@@ -66,15 +66,29 @@ if len(fetched) < 2:
     print("WARN: live package index incomplete - depends not re-checked")
     sys.exit(0)
 
+def array_block(text, name):
+    m = re.search(r"^%s=\(" % name, text, re.M)
+    if not m:
+        return None
+    depth = 0
+    for i in range(m.end() - 1, len(text)):
+        if text[i] == '(':
+            depth += 1
+        elif text[i] == ')':
+            depth -= 1
+            if depth == 0:
+                return text[m.end():i]
+    return None
+
 bad = 0
 for path in sorted(glob.glob("*/PKGBUILD")):
     text = open(path).read()
     names = set()
     for array in ("depends", "optdepends"):
-        block = re.search(r"^%s=\((.*?)\)" % array, text, re.M | re.S)
+        block = array_block(text, array)
         if not block:
             continue
-        for dep in re.findall(r"'([^']+)'", block.group(1)):
+        for dep in re.findall(r"'([^']+)'", block):
             name = re.split(r"[<>=:]", dep)[0].strip()
             names.add(name)
             if name not in ships:
