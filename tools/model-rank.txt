@@ -16,6 +16,7 @@ beam-free
 big-pickle
 nemotron-3.5-super-vl-free
 longcat-2.5-free
+hy4-flash-free
 
 # tier 4 - last resort
 nemotron-3.5-lightning-free

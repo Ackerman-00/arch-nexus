@@ -92,6 +92,14 @@
             "context": 1000000,
             "output": 512000
           }
+        },
+        "hy4-flash-free": {
+          "name": "Hy4 Flash Free",
+          "modelID": "hy4-flash-free",
+          "limit": {
+            "context": 1048576,
+            "output": 65536
+          }
         }
       }
     }
