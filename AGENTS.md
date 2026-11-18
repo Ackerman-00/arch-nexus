@@ -39,6 +39,13 @@ In the owner's absence the scheduler IS the owner of this repo: `FULL_REPO_ACCES
 - One broken package is reverted and logged as `skipped:`. The rest still ship.
 - Publishing to the AUR is NOT your job: after you push a bump to `main`, the workflow's token-scoped step runs `tools/aur-push.sh`, which regenerates `.SRCINFO` and pushes to `aur.archlinux.org`. The repo does not commit `.SRCINFO`.
 
+## Desktop-integration teardown
+
+- A resolved `depends=` is not a working application. For every GUI package you touch, and a rotating sample of at least 5 others (all of them if fewer than 5 exist), read the payload, never the README: desktop entry, wrapper script, DBus names in strings, `.so` probes, CLI flags.
+- Decide for each of: window launch, tray/StatusNotifierItem, file picker, notifications, screen sharing, global hotkeys, audio in and out, GPU/video decode, URL scheme handler, autostart, update channel. Name the runtime SERVICE each feature needs and add it to `optdepends` (never a hard dependency on a desktop environment) or document why it is missing.
+- Verify service names in the Arch core+extra databases or the AUR before adding them; a name Arch does not ship is a broken dependency.
+- Record one row per audited package in `.opencode-relay.md`: package, feature, required component, declared, verified how, status (feature-ok / feature-fixed / upstream-broken with evidence / not-verifiable with the reason).
+
 ## Self-maintenance
 
 - You may fix flaws in `.github/workflows/opencode-schedule.yml`, `AGENTS.md`, `opencode.json`, `tools/` and `.opencode/skills/`.
