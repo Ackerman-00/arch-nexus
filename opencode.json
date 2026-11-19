@@ -92,6 +92,14 @@
             "context": 1048576,
             "output": 65536
           }
+        },
+        "tidepool-alpha-free": {
+          "name": "Tidepool Alpha Free",
+          "modelID": "tidepool-alpha-free",
+          "limit": {
+            "context": 1048576,
+            "output": 131072
+          }
         }
       }
     }

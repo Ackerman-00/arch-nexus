@@ -9,3 +9,4 @@ nemotron-3.5-super-vl-free
 longcat-2.5-free
 hy4-flash-free
 nemotron-3.5-lightning-free
+tidepool-alpha-free
