@@ -1,4 +1,3 @@
-inkling-2-small-free
 iceman-free
 flint-40b-free
 deepseek-v4.1-flash-free
