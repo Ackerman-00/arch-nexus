@@ -18,7 +18,7 @@ In the owner's absence the scheduler IS the owner of this repo: `FULL_REPO_ACCES
 ## PKGBUILD quality
 
 - Smallest diff that fixes the root cause. No dead code, no TODO, no feature nobody asked for.
-- Dependencies are evidence: re-derive them from the payload (`readelf -d` DT_NEEDED union + by-name load probes, ASCII and UTF-16 string scans), then resolve every soname against the live Arch core+extra databases. A package name that is not in the index (renamed/merged: `atk`, `at-spi2-atk`, `cups-libs`, `pipewire-libs`) is a broken package, not a shrug - see `pkgbuild-style` for the exact method.
+- Dependencies are evidence: re-derive them from the payload (`readelf -d` DT_NEEDED union + by-name load probes, ASCII and UTF-16 string scans), then resolve every soname against the live Arch core+extra databases. A package name that is not in the index is a broken package, not a shrug - see `pkgbuild-style` for the exact method and the Arch split/merge history (`atk` and `at-spi2-atk` merged into `at-spi2-core`; `cups` split into `libcups`; `pipewire` split into `libpipewire`).
 - Never guess a `sha256sum`. Hash the file you downloaded.
 - Comments: only short evidence notes - what was verified, how, on which date (the `rootapp-bin` PKGBUILD header is the model). Never a comment restating the line below it, never commented-out code.
 - Keep the three recipes for the same payload in agreement: `rootapp-bin/PKGBUILD` here mirrors `rootapp/rootapp.spec` and `rootapp/debian.control` in opensuse-nexus.
