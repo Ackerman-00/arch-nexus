@@ -51,8 +51,14 @@ for dir in "$@"; do
   fi
   pkgname=$(grep -m1 '^pkgname=' "$pkgbuild" | sed 's/^pkgname=//' | tr -d "\"'")
   pkgver=$(grep -m1 '^pkgver=' "$pkgbuild" | sed 's/^pkgver=//' | tr -d "\"'")
-  pkgrel=$(grep -m1 '^pkgrel=' "$pkgbuild" | sed 's/^pkgrel=//' | tr -d "\"'" | sed 's/[^0-9].*//')
+  pkgrel=$(grep -m1 '^pkgrel=' "$pkgbuild" | sed 's/^pkgrel=//' | tr -d "\"'" | sed 's/[^0-9.].*//')
   fullver="${pkgver}-${pkgrel:-1}"
+  declared=$(bash -c 'source "$1" >/dev/null 2>&1; printf "%s-%s" "$pkgver" "$pkgrel"' _ "$pkgbuild")
+  if [ "$fullver" != "$declared" ]; then
+    echo "FAIL: parsed version $fullver but $pkgbuild declares $declared"
+    rc=1
+    continue
+  fi
   echo "== $pkgname $fullver =="
 
   aur_ver=$(curl -fsS --max-time 20 "https://aur.archlinux.org/rpc/v5/info?arg%5B%5D=${pkgname}" \
