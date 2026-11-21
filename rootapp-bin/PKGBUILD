@@ -1,7 +1,7 @@
 # rootapp-bin
 pkgname=rootapp-bin
 pkgver=0.9.164
-pkgrel=6
+pkgrel=7
 pkgdesc="Root App is a new Discord alternative, designed for gaming communities and large online groups"
 arch=('x86_64')
 url="https://www.rootapp.com"
@@ -62,6 +62,13 @@ optdepends=('bluez: org.bluez Bluetooth service (bluetooth.service) for Web Blue
             'xdg-desktop-portal-kde: file-picker and screen-share backend on KDE Plasma'
             'xdg-desktop-portal-wlr: screen-share backend on wlroots compositors'
             'xdg-desktop-portal-hyprland: window and region screen share backend on Hyprland (the app registers global hotkeys through X11 XRecord in libuiohook, so they stay unavailable on Wayland)'
+            'xdg-desktop-portal-cosmic: xdg-desktop-portal backend on the COSMIC desktop environment'
+            'xdg-desktop-portal-dde: xdg-desktop-portal backend on the Deepin desktop environment'
+            'xdg-desktop-portal-lxqt: xdg-desktop-portal backend using Qt, KDE Frameworks and libfm-qt'
+            'xdg-desktop-portal-pantheon: xdg-desktop-portal backend on Pantheon'
+            'xdg-desktop-portal-phosh: xdg-desktop-portal backend using GTK, GNOME and Phosh'
+            'xdg-desktop-portal-wlcom: xdg-desktop-portal backend for the Kylin Wayland compositor'
+            'xdg-desktop-portal-xapp: xdg-desktop-portal backend using GTK and Cinnamon, MATE and Xfce4 infrastructure'
             'pipewire: PipeWire daemon that feeds the portal ScreenCast capture'
             'wireplumber: PipeWire session and policy manager for voice and audio devices'
             'pipewire-pulse: PulseAudio-compatible server for voice and audio devices'
