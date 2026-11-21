@@ -25,13 +25,14 @@ for pkg in "${PKGS[@]}"; do
   echo "== build $pkg =="
   if docker run --rm -v "$PWD":/repo:ro -e pkg="$pkg" "$IMAGE" bash -ec '
     pacman -Sy --noconfirm --needed archlinux-keyring >/dev/null 2>&1
-    pacman -Syu --noconfirm --needed base-devel sudo >/dev/null
+    pacman -Syu --noconfirm --needed base-devel sudo python >/dev/null
     useradd -m builder
     echo "builder ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/builder
     cp -r "/repo/$pkg" "/tmp/$pkg"
     chown -R builder:builder "/tmp/$pkg"
     cd "/tmp/$pkg"
     runuser -u builder -- makepkg -sC --noconfirm
+    python3 /repo/tools/check-payload-deps.py "/tmp/$pkg"
   '; then
     echo "OK   $pkg"
   else
