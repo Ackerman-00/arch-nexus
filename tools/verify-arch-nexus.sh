@@ -24,10 +24,10 @@ echo "OK   news feed $feed (HTTP $code)"
 for feed in $(grep -rhoE 'https://archlinux\.org/[a-z/-]*news[a-z/]*' .github/workflows/*.yml 2>/dev/null | sort -u || true); do
   code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 "$feed" 2>/dev/null || echo 000)
   if [ "$code" = "404" ]; then
-    echo "WARN: workflow URL $feed returns 404 - the feed in AGENTS.md is the one that works"
-  else
-    echo "OK   workflow URL $feed (HTTP $code)"
+    echo "FAIL: workflow URL $feed returns 404"
+    exit 1
   fi
+  echo "OK   workflow URL $feed (HTTP $code)"
 done
 
 if grep -HE "^license=\(.*'custom'[,)]" */PKGBUILD; then
