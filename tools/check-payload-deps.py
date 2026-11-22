@@ -6,12 +6,20 @@ import re
 import subprocess
 import sys
 
-SONAME = r"[A-Za-z0-9_+.~-]+\.so(\.[0-9]+)*"
+SONAME = r"(lib[A-Za-z0-9+~_]*(-[A-Za-z0-9+~_.]+)*|ld-[A-Za-z0-9_.+~-]*)\.so(\.[0-9]+)*"
+SONAME_RE = re.compile(SONAME)
 
 
 def payload_stems(path):
     out = subprocess.run(["grep", "-aorhE", SONAME, path], capture_output=True).stdout
-    return {token.split(".so")[0] for token in out.decode("utf-8", "replace").split()}
+    stems = set()
+    for token in out.decode("utf-8", "replace").split():
+        if not SONAME_RE.fullmatch(token):
+            continue
+        stem = token.split(".so")[0]
+        if stem:
+            stems.add(stem)
+    return stems
 
 
 def package_stems(pkg):
