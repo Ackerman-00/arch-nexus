@@ -6,7 +6,6 @@ pkgdesc="Root App is a new Discord alternative, designed for gaming communities 
 arch=('x86_64')
 url="https://www.rootapp.com"
 license=('LicenseRef-proprietary')
-# deps payload 2026-11-21
 depends=('alsa-lib'
          'at-spi2-core'
          'ca-certificates-mozilla'
