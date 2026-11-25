@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""check-payload-deps.py <build-dir> - every library package in depends must be referenced by the installed payload."""
+"""check-payload-deps.py <build-dir> - every library in depends and every service in optdepends must be referenced by the installed payload."""
 import glob
 import os
 import re
@@ -8,18 +8,31 @@ import sys
 
 SONAME = r"(lib[A-Za-z0-9+~_]*(-[A-Za-z0-9+~_.]+)*|ld-[A-Za-z0-9_.+~-]*)\.so(\.[0-9]+)*"
 SONAME_RE = re.compile(SONAME)
+SERVICE = r"org\.[a-zA-Z0-9_.]+"
+SERVICE_RE = re.compile(SERVICE)
+
+
+def payload_tokens(path, pattern):
+    out = subprocess.run(["grep", "-aorhE", pattern, path], capture_output=True).stdout
+    return set(out.decode("utf-8", "replace").split())
 
 
 def payload_stems(path):
-    out = subprocess.run(["grep", "-aorhE", SONAME, path], capture_output=True).stdout
     stems = set()
-    for token in out.decode("utf-8", "replace").split():
-        if not SONAME_RE.fullmatch(token):
-            continue
-        stem = token.split(".so")[0]
-        if stem:
-            stems.add(stem)
+    for token in payload_tokens(path, SONAME):
+        if SONAME_RE.fullmatch(token):
+            stem = token.split(".so")[0]
+            if stem:
+                stems.add(stem)
     return stems
+
+
+def payload_services(path):
+    services = set()
+    for token in payload_tokens(path, SERVICE):
+        if SERVICE_RE.fullmatch(token):
+            services.add(token)
+    return services
 
 
 def package_stems(pkg):
@@ -37,6 +50,21 @@ def package_stems(pkg):
     return stems
 
 
+def array_block(text, name):
+    m = re.search(r"^%s=\(" % name, text, re.M)
+    if not m:
+        return None
+    depth = 0
+    for i in range(m.end() - 1, len(text)):
+        if text[i] == '(':
+            depth += 1
+        elif text[i] == ')':
+            depth -= 1
+            if depth == 0:
+                return text[m.end():i]
+    return None
+
+
 def main():
     if len(sys.argv) != 2:
         print(__doc__)
@@ -47,11 +75,15 @@ def main():
         print("FAIL %s: makepkg left no package tree to check" % build)
         return 1
     text = open(os.path.join(build, "PKGBUILD")).read()
-    block = re.search(r"^depends=\((.*?)\)", text, re.M | re.S)
-    deps = re.findall(r"'([^']+)'", block.group(1)) if block else []
+    block = array_block(text, "depends")
+    deps = re.findall(r"'([^']+)'", block) if block else []
+    optdep_block = array_block(text, "optdepends")
+    optdeps = re.findall(r"'([^']+)'", optdep_block) if optdep_block else []
     stems = set()
+    services = set()
     for payload in payloads:
         stems |= payload_stems(payload)
+        services |= payload_services(payload)
     if not stems:
         print("FAIL %s: no shared library name found in the packaged payload" % build)
         return 1
@@ -69,9 +101,19 @@ def main():
             print("FAIL %s: ships %s but the payload never references it - drop it or fix the evidence"
                   % (name, ", ".join(sorted(ships)[:4])))
             bad = 1
+    if services and optdeps:
+        for dep in optdeps:
+            found = SERVICE_RE.search(dep)
+            if not found:
+                continue
+            service = found.group(0)
+            if service not in services:
+                print("FAIL %s: optdepends declares %s but the installed payload never references it - drop it or fix the evidence"
+                      % (re.split(r"[<>=:]", dep)[0].strip(), service))
+                bad = 1
     if bad:
         return 1
-    print("OK   every library in depends is referenced by the payload")
+    print("OK   every library in depends and every service in optdepends is referenced by the payload")
     return 0
 
 
