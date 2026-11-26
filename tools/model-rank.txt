@@ -7,4 +7,4 @@ big-pickle
 nemotron-3.5-super-vl-free
 hy4-flash-free
 nemotron-3.5-lightning-free
-tidepool-alpha-free
+seaglass-alpha-free
